@@ -9,21 +9,6 @@ username = 'unc_networks'
 password = 'UNCSTATS'
 
 
-def download_url(url, path=''):
-    """
-    This is a quick and easy function that simulates clicking a link in
-    your browser that initiates a download.
-
-    url:: the url from which data is to be downloaded.
-    path:: the downloaded file to be created.
-    """
-    filename = path + url.split("/")[-1]
-
-    with open(filename, "wb") as f:
-        r = requests.get(url)
-        f.write(r.content)
-
-
 def download_court_data(court_name, data_dir):
     """
     Downloads the cluster and opinion files from a given court.
@@ -38,9 +23,14 @@ def download_court_data(court_name, data_dir):
 
     data_dir: path to the data directory
 
-    e.g.
+    get_clusters: if True then will download the cluster files
+
+    get_opinions: if True then will download the opinion files
+
+    Notes
+    ----
     from download_data_batch import download_court_data
-    court_name, data_dir = 'fisc', '../data/'
+    court_name, data_dir = 'nced', '../data/'
     download_court_data(court_name, data_dir)
     """
     # TODO: create csv file containing all court names
@@ -52,29 +42,35 @@ def download_court_data(court_name, data_dir):
 
     # Check that data_dir/raw/cases/ exists
     court_data_dir = data_dir + 'raw/' + court_name + '/cases/'
-    cluster_data_dir = court_data_dir + 'clusters/'
-    opinion_data_dir = court_data_dir + 'opinions/'
 
-    if not os.path.exists(court_data_dir):
+    # grab cluster files
+    cluster_data_dir = court_data_dir + 'clusters/'
+    if not os.path.exists(cluster_data_dir):
         os.makedirs(cluster_data_dir)
+
+    start = time.time()
+    download_bulk_resource(court_name, 'clusters', data_dir)
+    end = time.time()
+    print '%s clusters download took %d seconds' % \
+          (court_name, end - start)
+    print
+
+    # grab opinion files
+    opinion_data_dir = court_data_dir + 'opinions/'
+    if not os.path.exists(opinion_data_dir):
         os.makedirs(opinion_data_dir)
 
     start = time.time()
     download_bulk_resource(court_name, 'opinions', data_dir)
     end = time.time()
-    print '%s opinions download took %d seconds' % (court_name, end - start)
-    print
-
-    start = time.time()
-    download_bulk_resource(court_name, 'clusters', data_dir)
-    end = time.time()
-    print '%s clusters download took %d seconds' % (court_name, end - start)
+    print '%s opinions download took %d seconds' % \
+          (court_name, end - start)
     print
 
 
 def download_bulk_resource(court_name, resource, data_dir):
     """
-    Downloads the bulk data files for a given resouce from a given court
+    Downloads the bulk data files for a given resource from a given court.
 
     Parameters
     ----------
@@ -128,6 +124,28 @@ def download_bulk_resource(court_name, resource, data_dir):
         print "All %s %s files accounted for." % (court_name, resource)
 
 
+def download_master_edgelist(data_dir):
+    """
+    Downloads the master edgelist
+    """
+
+    url = 'https://www.courtlistener.com/api/bulk-data/citations/all.csv.gz'
+
+    path = data_dir + 'raw/'
+
+    print 'downloading edgelist gzip...'
+    download_url(url=url,
+                 path=path)
+
+    # TODO: automatically extract file
+    # print '...extracting edglist...'
+    # with tarfile.open(path + 'all.csv.gz') as tf:
+    #     tf.extractall(path=path)
+    #
+    # # And delete .tar.gz file
+    # os.remove(path + 'all.csv.gz')
+
+
 def url_to_dict(url):
     """
     :param url: String representing a json-style object on Court Listener's
@@ -142,3 +160,18 @@ def url_to_dict(url):
     html = html.replace('null', 'None')
     html_as_dict = ast.literal_eval(html)
     return html_as_dict
+
+
+def download_url(url, path=''):
+    """
+    This is a quick and easy function that simulates clicking a link in
+    your browser that initiates a download.
+
+    url:: the url from which data is to be downloaded.
+    path:: the downloaded file to be created.
+    """
+    filename = path + url.split("/")[-1]
+
+    with open(filename, "wb") as f:
+        r = requests.get(url)
+        f.write(r.content)
