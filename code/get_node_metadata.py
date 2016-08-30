@@ -5,16 +5,73 @@ import time
 
 import pandas as pd
 
-from download_data_batch import download_bulk_resource
+from download_data import download_bulk_resource
+from clean_jurisdiction import load_jurisdictions
 
 
-def make_entire_network_metadata(data_dir):
+def make_node_metadata_master(data_dir, clean=False, remove=True):
+    """
+    Creates the node_metadata.csv file all jurisdictions. Note that if the
+    node_metadata.csv file already exists it will be overwritten.
 
-    jurisdiction_file = pd.read_csv(data_dir + 'jurisdictions.csv')
+    Parameters
+    --------
+    court_name: which court
+
+    data_dir: path to data directory
+
+    clean: if True will place file in data/clean/court_name/network folder
+    otherwise will place file in data/raw/court_name/network folder
+
+    remove: if true will remove .json files
+
+    Output
+    ------
+    Saves a csv file containing node metadata
+    """
+    jurisdictions = load_jurisdictions(data_dir)
+
+    if clean:
+        file_path = data_dir + 'clean/node_metadata_master.csv'
+    else:
+        file_path = data_dir + 'raw/node_metadata_master_r.csv'
+
+    # if the node_metadata file already exsists kill it
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+
+    all_courts = jurisdictions.index.tolist()
+    # nc_courts = []
+    # for court in jurisdictions.index:
+    #     if jurisdictions.loc[court, 'horizontal'] == 'NC':
+    #         nc_courts.append(court)
+
+    metadata = get_case_metadata_from_court(all_courts[0],
+                                            data_dir, remove=remove)
+
+    start = time.time()
+    for court in all_courts[1:]:
+        court_data = get_case_metadata_from_court(court,
+                                                  data_dir,
+                                                  remove=remove)
+        metadata = metadata.append(court_data)
+    end = time.time()
+
+    print 'creating the entire network node metadata file took %d seconds' \
+          % (end - start)
+
+    metadata.to_csv(file_path)
+
+    # kill the rest of the empty jurisdiction folders
+    if remove:
+        for court in nc_courts:
+            court_dir = data_dir + 'raw/%s/' % court
+            if len(os.listdir(court_dir)) == 0:
+                os.rmdir(court_dir)
 
 
-def make_court_subnetwork_metadata(court_name, data_dir,
-                                   clean=False, remove=True):
+def make_node_metadata_court(court_name, data_dir,
+                             clean=False, remove=True):
     """
     Creates the node_metadata.csv file for a given court. Note that if the
     node_metadata.csv file already exists it will be overwritten.
@@ -173,7 +230,7 @@ def get_cluster_data(path):
     year, month, day = [int(e) for e in cl_dict['date_filed'].rsplit('-')]
     data['date'] = datetime.date(year=year, month=month, day=day)
 
-    data['name'] = cl_dict['case_name'].encode('ascii', 'ignore')
+    data['name'] = cl_dict['slug'].encode('ascii', 'ignore')
 
     data['judges'] = cl_dict['judges'].encode('ascii', 'ignore')
 

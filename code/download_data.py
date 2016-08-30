@@ -29,7 +29,7 @@ def download_court_data(court_name, data_dir):
 
     Notes
     ----
-    from download_data_batch import download_court_data
+    from download_data import download_court_data
     court_name, data_dir = 'nced', '../data/'
     download_court_data(court_name, data_dir)
     """
@@ -101,24 +101,19 @@ def download_bulk_resource(court_name, resource, data_dir):
                 (resource, court_name.upper())
 
         # Delete the files we currently have
-        print '...deleting files...'
         for filename in files_in_dir:
             os.remove(r'%s/%s' % (resource_data_dir, filename))
 
         # Download the .tar.gz file
-        print '...downloading new .tar.gz file...'
         resource_url = 'https://www.courtlistener.com/api/bulk-data/%s/%s.tar.gz' % (resource, court_name)
         download_url(url=resource_url,
                      path=resource_data_dir)
 
         # Extract it
-        print '...extracting files...'
         with tarfile.open(resource_data_dir + '%s.tar.gz' % court_name) as tf:
             tf.extractall(path=resource_data_dir)
         # And delete .tar.gz file
         os.remove('%s/%s.tar.gz' % (resource_data_dir, court_name))
-
-        print '...done.'
 
     else:
         print "All %s %s files accounted for." % (court_name, resource)
@@ -175,3 +170,21 @@ def download_url(url, path=''):
     with open(filename, "wb") as f:
         r = requests.get(url)
         f.write(r.content)
+
+
+def case_info(case_id):
+    """
+    Given the case id returns a link to the opinion file on court listener
+    """
+    url = 'https://www.courtlistener.com/api/rest/v3/clusters/%s/?format=json'\
+          % case_id
+
+    case = url_to_dict(url)
+    courtlistener_url = 'https://www.courtlistener.com/'
+    opinion_url = courtlistener_url + case['absolute_url']
+
+    print case['case_name']
+    print case['date_filed']
+    print
+    print opinion_url
+    print

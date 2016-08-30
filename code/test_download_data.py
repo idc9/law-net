@@ -2,7 +2,7 @@ import os
 
 from nose.tools import assert_equal, assert_true
 
-from download_data_batch import *
+from download_data import *
 
 data_dir = '../data/'
 
