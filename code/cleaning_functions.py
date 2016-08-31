@@ -2,81 +2,98 @@ import pandas as pd
 import numpy as np
 
 
-def clean_jurisdiction_csv(data_dir):
+def clean_scotus():
+    pass
+
+
+def get_clean_jurisdiction(jurisdiction_df, case_metadata):
     """
-    cleans the jursidictions.csv file
+    Cleans the jursidictions file.
+    Clean the case_metadata file first!
 
     # index by abbreviation
     # make column names lower case
     # get rid of weird formatting in juridiction
     # add horizontal jurisdictions
     # add vertical jursidictions
+
+    Parameters
+    ----------
+    jurisdiction_df: pandas DataFrame of raw jurisdicitons file
+    case_metadata: pandas DataFrame of clean case_metadata
+
+
     """
     # TODO: finish horozontal categories
     # TODO: finish vertical categories
 
-    jurisdiction_file = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
-
     # reindex by abbrev
-    jurisdiction_file.set_index('Abbrev', drop=True, inplace=True)
-    jurisdiction_file.index.name = 'abbrev'
+    jurisdiction_df.set_index('Abbrev', drop=True, inplace=True)
+    jurisdiction_df.index.name = 'court'
 
     # make col names lower case and remove spaces
-    jurisdiction_file.columns = [c.encode('ascii', 'ignore')
-                                 .lower().replace(' ', '_')
-                                 for c in jurisdiction_file.columns]
+    jurisdiction_df.columns = [c.encode('ascii', 'ignore')
+                               .lower().replace(' ', '_')
+                               for c in jurisdiction_df.columns]
 
     # get rid of weird character in Jurisdiction column
-    for court in jurisdiction_file.index:
-        j = jurisdiction_file.loc[court, 'jurisdiction']
-        jurisdiction_file.loc[court, 'jurisdiction'] = j.replace('\xa0', ' ')
+    for court in jurisdiction_df.index:
+        j = jurisdiction_df.loc[court, 'jurisdiction']
+        jurisdiction_df.loc[court, 'jurisdiction'] = j.replace('\xa0', ' ')
 
     states = get_states()
 
     # identify horizontal category
-    jurisdiction_file['horizontal'] = np.nan
-    for court in jurisdiction_file.index:
-        jname = jurisdiction_file.loc[court, 'name']
+    jurisdiction_df['horizontal'] = np.nan
+    for court in jurisdiction_df.index:
+        jname = jurisdiction_df.loc[court, 'name']
         if 'Virginia' in jname:
             if 'West' in jname:
-                jurisdiction_file.loc[court, 'horizontal'] = 'WV'
+                jurisdiction_df.loc[court, 'horizontal'] = 'WV'
             else:
-                jurisdiction_file.loc[court, 'horizontal'] = 'VA'
+                jurisdiction_df.loc[court, 'horizontal'] = 'VA'
         else:
             states_found = [st for st in states.keys() if states[st] in jname]
             if len(states_found) == 1:
-                jurisdiction_file.loc[court, 'horizontal'] = states_found[0]
+                jurisdiction_df.loc[court, 'horizontal'] = states_found[0]
             else:
                 # TODO: finish this
-                jurisdiction_file.loc[court, 'horizontal'] = 'other'
+                jurisdiction_df.loc[court, 'horizontal'] = 'other'
 
     # identify vertical category
-    jurisdiction_file['vertical'] = np.nan
-    for court in jurisdiction_file.index:
-        juris = jurisdiction_file.loc[court, 'jurisdiction']
+    jurisdiction_df['vertical'] = np.nan
+    for court in jurisdiction_df.index:
+        juris = jurisdiction_df.loc[court, 'jurisdiction']
 
         if 'Appellate' in juris:
-            jurisdiction_file.loc[court, 'vertical'] = 'appellate'
+            jurisdiction_df.loc[court, 'vertical'] = 'appellate'
 
         elif 'Supreme' in juris:
-            jurisdiction_file.loc[court, 'vertical'] = 'supreme'
+            jurisdiction_df.loc[court, 'vertical'] = 'supreme'
         else:
-            jurisdiction_file.loc[court, 'vertical'] = 'other'
+            jurisdiction_df.loc[court, 'vertical'] = 'other'
 
-    jurisdiction_file.to_csv(data_dir + 'clean/jurisdictions.csv')
+    # update counts
+    num_cases = {}
+    id_to_court = case_meatadata.court.to_dict()
 
+    # count the number of cases in each juridiction
+    for case in case_meatadata.index:
+        court = id_to_court[case]
 
-def load_jurisdictions(data_dir):
-    """
-    load the juridictions
-    """
-    jurisdictions = pd.read_csv(data_dir + 'clean/jurisdictions.csv')
+        if court in num_cases.keys():
+            num_cases[court] += 1
+        else:
+            num_cases[court] = 1
 
-    # reindex by abbrev
-    jurisdictions.set_index('abbrev', drop=True, inplace=True)
-    jurisdictions.index.name = 'abbrev'
+    # update the counts
+    for court in jurisdiction_df.index:
+        if court in num_cases.keys():
+            jurisdiction_df.loc[court, 'count'] = num_cases[court]
+        else:
+            jurisdiction_df.loc[court, 'count'] = 0
 
-    return jurisdictions
+    return jurisdiction_df
 
 
 def get_states():

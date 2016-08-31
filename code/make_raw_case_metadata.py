@@ -2,14 +2,15 @@ import os
 import json
 import datetime
 import time
+import shutil
 
 import pandas as pd
 
 from download_data import download_bulk_resource
-from clean_jurisdiction import load_jurisdictions
+from load_data import load_jurisdictions
 
 
-def make_node_metadata_master(data_dir, clean=False, remove=True):
+def make_raw_case_metadata_master(data_dir, remove=True):
     """
     Creates the node_metadata.csv file all jurisdictions. Note that if the
     node_metadata.csv file already exists it will be overwritten.
@@ -20,21 +21,15 @@ def make_node_metadata_master(data_dir, clean=False, remove=True):
 
     data_dir: path to data directory
 
-    clean: if True will place file in data/clean/court_name/network folder
-    otherwise will place file in data/raw/court_name/network folder
-
     remove: if true will remove .json files
 
     Output
     ------
-    Saves a csv file containing node metadata
+    Saves a csv file containing case metadata
     """
     jurisdictions = load_jurisdictions(data_dir)
 
-    if clean:
-        file_path = data_dir + 'clean/node_metadata_master.csv'
-    else:
-        file_path = data_dir + 'raw/node_metadata_master_r.csv'
+    file_path = data_dir + 'raw/case_metadata_master_r.csv'
 
     # if the node_metadata file already exsists kill it
     if os.path.isfile(file_path):
@@ -46,14 +41,14 @@ def make_node_metadata_master(data_dir, clean=False, remove=True):
     #     if jurisdictions.loc[court, 'horizontal'] == 'NC':
     #         nc_courts.append(court)
 
-    metadata = get_case_metadata_from_court(all_courts[0],
-                                            data_dir, remove=remove)
-
     start = time.time()
+    metadata = get_raw_case_metadata_from_court(all_courts[0],
+                                                data_dir, remove=remove)
+
     for court in all_courts[1:]:
-        court_data = get_case_metadata_from_court(court,
-                                                  data_dir,
-                                                  remove=remove)
+        court_data = get_raw_case_metadata_from_court(court,
+                                                      data_dir,
+                                                      remove=remove)
         metadata = metadata.append(court_data)
     end = time.time()
 
@@ -64,14 +59,13 @@ def make_node_metadata_master(data_dir, clean=False, remove=True):
 
     # kill the rest of the empty jurisdiction folders
     if remove:
-        for court in nc_courts:
+        for court in all_courts:
             court_dir = data_dir + 'raw/%s/' % court
             if len(os.listdir(court_dir)) == 0:
                 os.rmdir(court_dir)
 
 
-def make_node_metadata_court(court_name, data_dir,
-                             clean=False, remove=True):
+def make_raw_case_metadata_court(court_name, data_dir, remove=True):
     """
     Creates the node_metadata.csv file for a given court. Note that if the
     node_metadata.csv file already exists it will be overwritten.
@@ -88,14 +82,10 @@ def make_node_metadata_court(court_name, data_dir,
     remove: if true will remove .json files
     """
 
-    metadata = get_case_metadata_from_court(court_name, data_dir, remove)
+    metadata = get_raw_case_metadata_from_court(court_name, data_dir, remove)
 
-    if clean:
-        network_path = data_dir + 'clean/' + court_name + '/network/'
-        file_name = 'node_metadata.csv'
-    else:
-        network_path = data_dir + 'raw/' + court_name + '/network/'
-        file_name = 'node_metadata_r.csv'
+    network_path = data_dir + 'raw/' + court_name + '/network/'
+    file_name = 'case_metadata_r.csv'
 
     if not os.path.exists(network_path):
         os.makedirs(network_path)
@@ -106,7 +96,7 @@ def make_node_metadata_court(court_name, data_dir,
     metadata.to_csv(network_path + file_name)
 
 
-def get_case_metadata_from_court(court_name, data_dir, remove=True):
+def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
     """
     Returns a pandas DatFrame that has the case metadata for each case in
     the given court. Will download json files if they are not already on
@@ -127,10 +117,13 @@ def get_case_metadata_from_court(court_name, data_dir, remove=True):
     """
 
     cluster_dir = data_dir + 'raw/%s/cases/clusters/' % court_name
-    # opinion_dir = data_dir + 'raw/%s/cases/opinions/' % court_name
+    opinion_dir = data_dir + 'raw/%s/cases/opinions/' % court_name
+
+    clusters_already_exist = os.path.exists(cluster_dir)
+    opinions_already_exist = os.path.exists(opinion_dir)
 
     # download cases if they are not already on local computer
-    if not os.path.exists(cluster_dir):
+    if not clusters_already_exist:
         os.makedirs(cluster_dir)
 
         # grab cluster files
@@ -201,16 +194,9 @@ def get_case_metadata_from_court(court_name, data_dir, remove=True):
     #        (court_name, end-start)
     # print
 
-    if remove:
-        for case in os.listdir(cluster_dir):
-            os.remove(cluster_dir + case)
-
-        # for case in os.listdir(opinion_dir):
-        #     os.remove(opinion_dir + case)
-
-        os.rmdir(cluster_dir)
-        # os.rmdir(opinion_dir)
-        os.rmdir(data_dir + 'raw/%s/cases/' % court_name)
+    if remove and not clusters_already_exist:
+        case_dir = data_dir + 'raw/%s/cases/' % court_name
+        remove_folder(case_dir)
 
     return metadata
 
@@ -275,3 +261,16 @@ def json_to_dict(path):
     with open(path) as data_file:
         data = json.load(data_file)
         return data
+
+
+def remove_folder(path):
+    """
+    Kills a directory that is not empty
+    """
+    if len(path) <= 2:
+        raise ValueError('DANGER ZONE MAKE SURE THIS IS WHAT YOU WANT')
+
+    # check if folder exists
+    if os.path.exists(path):
+        # remove if exists
+        shutil.rmtree(path)

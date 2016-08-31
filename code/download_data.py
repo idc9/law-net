@@ -123,7 +123,7 @@ def download_master_edgelist(data_dir):
     """
     Downloads the master edgelist
     """
-
+    print 'need to finish'
     url = 'https://www.courtlistener.com/api/bulk-data/citations/all.csv.gz'
 
     path = data_dir + 'raw/'
