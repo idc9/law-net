@@ -7,8 +7,6 @@ import shutil
 import pandas as pd
 
 from download_data import download_bulk_resource
-from load_data import load_jurisdictions
-
 
 def make_raw_case_metadata_master(data_dir, remove=True):
     """
@@ -27,7 +25,8 @@ def make_raw_case_metadata_master(data_dir, remove=True):
     ------
     Saves a csv file containing case metadata
     """
-    jurisdictions = load_jurisdictions(data_dir)
+    jurisdictions = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
+
 
     file_path = data_dir + 'raw/case_metadata_master_r.csv'
 
@@ -35,7 +34,7 @@ def make_raw_case_metadata_master(data_dir, remove=True):
     if os.path.isfile(file_path):
         os.remove(file_path)
 
-    all_courts = jurisdictions.index.tolist()
+    all_courts = jurisdictions['Abbrev'].tolist()
     # nc_courts = []
     # for court in jurisdictions.index:
     #     if jurisdictions.loc[court, 'horizontal'] == 'NC':

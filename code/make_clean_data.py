@@ -2,12 +2,12 @@ import os
 
 import pandas as pd
 
-from cleaning_functions import clean_scotus
+from cleaning_functions import *
 from make_raw_case_metadata import make_raw_case_metadata_master
 from download_data import download_master_edgelist
 
 
-def make_clean_case_metadata_master(data_dir, overwrite=False):
+def make_clean_case_metadata(data_dir, overwrite=False):
     """
     Applies the cleaning functions to the raw case_metadata_master.csv file in
     the raw/ folder. If the raw metadata file does not exist then download it.
@@ -19,7 +19,6 @@ def make_clean_case_metadata_master(data_dir, overwrite=False):
 
     overwrite: if the file already exists in the clean folder overwrite it
     """
-    print 'write cleaning functions...'
     # TODO: implement some cleaning functions
     # if the master file is already there don't overwrite it unless told to
     if (not overwrite) and (os.path.isfile(data_dir + 'clean/case_metadata_master.csv')):
@@ -31,16 +30,19 @@ def make_clean_case_metadata_master(data_dir, overwrite=False):
 
     raw_metadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv')
 
-    # TODO: create cleaning functions
-    clean_metadata = raw_metadata.copy()
+    # TODO: create additional cleaning functions
+    cert_cases = get_cert_cases_scotus(data_dir)
+    pd.DataFrame({'cert': cert_cases}).to_csv(data_dir + 'raw/cert.csv')
+
+    clean_metadata = raw_metadata.drop(cert_cases)
 
     clean_metadata.to_csv(data_dir + 'clean/case_metadata_master.csv')
 
 
-def make_clean_edgelist_master(data_dir, overwrite=False):
+def make_clean_edgelist(data_dir, overwrite=False):
     """
-    Applies the cleaning functions to the raw edgelist.csv file in
-    the raw/ folder. If the raw edgelist file does not exist then download it.
+    Applies the cleaning functions to the raw case_metadata_master.csv file in
+    the raw/ folder. If the raw metadata file does not exist then download it.
 
     Parameters
     ---------
@@ -49,19 +51,18 @@ def make_clean_edgelist_master(data_dir, overwrite=False):
 
     overwrite: if the file already exists in the clean folder overwrite it
     """
-
+    # TODO: implement some cleaning functions
     # if the master file is already there don't overwrite it unless told to
-    if (not overwrite) and (os.path.isfile(data_dir + 'clean/edgelist_master.csv')):
-        raise ValueError('case edgelist_master file already exists')
+    if (not overwrite) and (os.path.isfile(data_dir + 'clean/case_metadata_master.csv')):
+        raise ValueError('case metadata file already exists')
 
-    # if edgelist_master_r does not exist then download it
+    # if case_metadata_master_r does not exist then download it
     if not os.path.isfile(data_dir + 'raw/edgelist_master_r.csv'):
         download_master_edgelist(data_dir)
 
-    raw_edgelist = pd.read_csv(data_dir + 'raw/edgelist_master_r.csv')
+    # TODO: create additional cleaning functions
 
-    # TODO: create cleaning functions
-    clean_edgelist = raw_edgelist.copy()
+    clean_edgelist = find_time_travelers(data_dir)
 
     clean_edgelist.to_csv(data_dir + 'clean/edgelist_master.csv')
 
@@ -72,8 +73,8 @@ def make_clean_jurisdiction_file(data_dir):
     the raw/ folder. If the raw jurisdictions file does
     not exist then download it.
     """
-    raw_jurisdiction_df = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
-    clean_jurisdiction_df = get_clean_jurisdiction(raw_jurisdiction_df)
+    # raw_jurisdiction_df = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
+    clean_jurisdiction_df = get_clean_jurisdiction(data_dir)
     clean_jurisdiction_df.to_csv(data_dir + 'clean/jurisdictions.csv')
 
 

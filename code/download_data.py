@@ -4,6 +4,7 @@ import requests
 import ast
 import tarfile
 import time
+import json
 
 username = 'unc_networks'
 password = 'UNCSTATS'
@@ -85,7 +86,11 @@ def download_bulk_resource(court_name, resource, data_dir):
 
     print 'requesting metadata for %s' % court_name
     court_metadata_url = 'https://www.courtlistener.com/api/rest/v3/%s/?docket__court=%s' % (resource, court_name)
-    resource_data_dir = '%sraw/%s/cases/%s/' % (data_dir, court_name, resource)
+    resource_data_dir = '%sraw/%s/%s/' % (data_dir, court_name, resource)
+
+    # if the directory does not exist then make it
+    if not os.path.exists(resource_data_dir):
+        os.makedirs(resource_data_dir)
 
     # check if we already have all cases
     court_metadata = url_to_dict(court_metadata_url)
@@ -172,19 +177,18 @@ def download_url(url, path=''):
         f.write(r.content)
 
 
-def case_info(case_id):
+def json_to_dict(path):
     """
-    Given the case id returns a link to the opinion file on court listener
+    Returns a dictionary version of a json file
+
+    Parameters
+    ----------
+    path: path to file
     """
-    url = 'https://www.courtlistener.com/api/rest/v3/clusters/%s/?format=json'\
-          % case_id
 
-    case = url_to_dict(url)
-    courtlistener_url = 'https://www.courtlistener.com/'
-    opinion_url = courtlistener_url + case['absolute_url']
+    if not os.path.exists(path):
+        raise ValueError('file does not exist')
 
-    print case['case_name']
-    print case['date_filed']
-    print
-    print opinion_url
-    print
+    with open(path) as data_file:
+        data = json.load(data_file)
+        return data

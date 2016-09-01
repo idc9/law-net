@@ -1,12 +1,78 @@
 import pandas as pd
 import numpy as np
+import networkx as nx
+import os
+
+from load_data import get_network
+from download_data import json_to_dict
 
 
-def clean_scotus():
-    pass
+def get_cert_cases_scotus(data_dir):
+    """
+    Finds the certiorari cases from SCOTUS
+
+    Output
+    ------
+    python list of certiorari cases
+    """
+    court_name = 'scotus'
+
+    # grab all scotus cases
+    case_meatadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
+                                 index_col='id')
+
+    case_meatadata = case_meatadata[case_meatadata.court == 'scotus']
+    case_meatadata['date'] = pd.to_datetime(case_meatadata['date'])
+
+    case_ids = set(case_meatadata.index)
+
+    # grab scotus-scotus edges
+    edgelist = pd.read_csv(data_dir + 'raw/edgelist_master_r.csv')
+    edgelist = edgelist[edgelist.citing.isin(case_ids) & edgelist.cited.isin(case_ids)]
+
+    # build the scotus network
+    G = get_network(case_meatadata, edgelist)
+    degrees = G.degree()
+
+    # find zero degree cases that contain the words: 'denied' or 'certiorari'
+    op_dir = data_dir + 'raw/' + court_name + '/opinions/'
+    case_meatadata['cert_case'] = False
+    for case, _ in case_meatadata.iterrows():
+        op_path = op_dir + str(case) + '.json'
+        if os.path.isfile(op_path):
+            if degrees[case] == 0:
+
+                opinion = json_to_dict(op_path)
+                for key in opinion.keys():
+                    value = opinion[key]
+                    if type(value) is unicode:
+                        if 'denied' in value or 'certiorari' in value:
+                            case_meatadata.loc[case, 'cert_case'] = True
+
+    return case_meatadata[case_meatadata['cert_case']].index.tolist()
 
 
-def get_clean_jurisdiction(jurisdiction_df, case_metadata):
+def find_time_travelers(data_dir):
+    """
+    Some edges cite forwards in time...
+    """
+    case_meatadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
+                                 index_col='id')
+
+    edgelist = pd.read_csv(data_dir + 'raw/edgelist_master_r.csv')
+    # some edges travel forwards in time
+    edgelist['timetravel'] = False
+    for index, edge in edgelist.iterrows():
+        ing_date = case_meatadata.loc[edge['citing'], 'date']
+        ed_date = case_meatadata.loc[edge['cited'], 'date']
+
+        if ing_date < ed_date:
+            edgelist.loc[index, 'timetravel'] = True
+
+    return edgelist[edgelist['timetravel']].drop(['timetravel'], axis=1)
+
+
+def get_clean_jurisdiction(data_dir):
     """
     Cleans the jursidictions file.
     Clean the case_metadata file first!
@@ -19,13 +85,16 @@ def get_clean_jurisdiction(jurisdiction_df, case_metadata):
 
     Parameters
     ----------
-    jurisdiction_df: pandas DataFrame of raw jurisdicitons file
-    case_metadata: pandas DataFrame of clean case_metadata
 
-
+    Output
+    ------
+    returns the clean jurisdictions data frame
     """
     # TODO: finish horozontal categories
     # TODO: finish vertical categories
+
+    jurisdiction_df = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
+    case_metadata = pd.read_csv(data_dir + 'clean/case_metadata_master.csv')
 
     # reindex by abbrev
     jurisdiction_df.set_index('Abbrev', drop=True, inplace=True)
@@ -75,10 +144,10 @@ def get_clean_jurisdiction(jurisdiction_df, case_metadata):
 
     # update counts
     num_cases = {}
-    id_to_court = case_meatadata.court.to_dict()
+    id_to_court = case_metadata.court.to_dict()
 
     # count the number of cases in each juridiction
-    for case in case_meatadata.index:
+    for case in case_metadata.index:
         court = id_to_court[case]
 
         if court in num_cases.keys():
