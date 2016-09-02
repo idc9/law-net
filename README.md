@@ -33,9 +33,15 @@ network = load_jurisdiction_network(data_dir)
 ```
 
 This is a collaboration between
+
 [Brendan Schneiderman](https://www.linkedin.com/in/brendan-schneiderman-150b1375)
+
 [Iain Carmichael](http://iaincarmichael.web.unc.edu/)
+
 [James Jushchuk](https://www.linkedin.com/in/james-jushchuk-358754115)
+
 [James Wudel](https://www.linkedin.com/in/jwudel)
+
 [Michael Kim](https://www.linkedin.com/in/michael-kim-76aa53104)
+
 [Shankar Bhamidi](http://shankarbhamidi.web.unc.edu/)
