@@ -8,6 +8,7 @@ import pandas as pd
 
 from download_data import download_bulk_resource
 
+
 def make_raw_case_metadata_master(data_dir, remove=True):
     """
     Creates the node_metadata.csv file all jurisdictions. Note that if the
@@ -27,7 +28,6 @@ def make_raw_case_metadata_master(data_dir, remove=True):
     """
     jurisdictions = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
 
-
     file_path = data_dir + 'raw/case_metadata_master_r.csv'
 
     # if the node_metadata file already exsists kill it
@@ -42,7 +42,8 @@ def make_raw_case_metadata_master(data_dir, remove=True):
 
     start = time.time()
     metadata = get_raw_case_metadata_from_court(all_courts[0],
-                                                data_dir, remove=remove)
+                                                data_dir,
+                                                remove=remove)
 
     for court in all_courts[1:]:
         court_data = get_raw_case_metadata_from_court(court,

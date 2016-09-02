@@ -1,9 +1,10 @@
 
-def test_clean_scotus():
+def test_data():
     """
-    Check:
-    - certorari cases are gone
-    - all cases are there (compare against independent list)
-    - cases cite backwards in time
+
     """
+
+    # TODO: check each case from the edgelist is in the case_metadata file
+
+    # TODO: check all cases cite forwards in time
     pass

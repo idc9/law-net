@@ -93,7 +93,7 @@ def case_info(case_id):
           % case_id
 
     case = url_to_dict(url)
-    courtlistener_url = 'https://www.courtlistener.com/'
+    courtlistener_url = 'https://www.courtlistener.com'
     opinion_url = courtlistener_url + case['absolute_url']
 
     print case['case_name']

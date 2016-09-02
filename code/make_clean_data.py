@@ -64,7 +64,7 @@ def make_clean_edgelist(data_dir, overwrite=False):
 
     clean_edgelist = find_time_travelers(data_dir)
 
-    clean_edgelist.to_csv(data_dir + 'clean/edgelist_master.csv')
+    clean_edgelist.to_csv(data_dir + 'clean/edgelist_master.csv', index=False)
 
 
 def make_clean_jurisdiction_file(data_dir):
@@ -75,7 +75,8 @@ def make_clean_jurisdiction_file(data_dir):
     """
     # raw_jurisdiction_df = pd.read_csv(data_dir + 'raw/jurisdictions.csv')
     clean_jurisdiction_df = get_clean_jurisdiction(data_dir)
-    clean_jurisdiction_df.to_csv(data_dir + 'clean/jurisdictions.csv')
+    clean_jurisdiction_df.to_csv(data_dir + 'clean/jurisdictions.csv',
+                                 index=False)
 
 
 def make_jurisdiction_edgelist(data_dir):
@@ -89,7 +90,7 @@ def make_jurisdiction_edgelist(data_dir):
     """
 
     edgelist = pd.read_csv(data_dir + 'clean/edgelist_master.csv')
-    case_metadata = pd.read_csv(data_dir + 'clean/case_metadata_master_r.csv',
+    case_metadata = pd.read_csv(data_dir + 'clean/case_metadata_master.csv',
                                 index_col='id')
     jurisdictions = pd.read_csv(data_dir + 'clean/jurisdictions.csv',
                                 index_col='court')
@@ -98,12 +99,13 @@ def make_jurisdiction_edgelist(data_dir):
                              index=jurisdictions.index.tolist(),
                              columns=jurisdictions.index.tolist())
 
-    id_to_court = case_meatadata.court.to_dict()
+    id_to_court = case_metadata.court.to_dict()
     for index, edge in edgelist.iterrows():
-        ing_court = id_to_court[edge['citing']]
-        ed_court = id_to_court[edge['cited']]
+        if not edge['case_mia']:
+            ing_court = id_to_court[edge['citing']]
+            ed_court = id_to_court[edge['cited']]
 
-        court_adj.loc[ing_court, ed_court] += 1
+            court_adj.loc[ing_court, ed_court] += 1
 
     court_adj.to_csv(data_dir + 'clean/jurisdictions_adj_mat.csv')
 
