@@ -1,27 +1,34 @@
 # law-net-iain
 
+code/pipeline/ contains the data pipeline
+download_data.py and make_raw_case_metadata.py
 
-To create the node_metadata file for the entire network
-```
-from get_node_metadata import make_node_metadata_master
-data_dir = 'data/'
-make_node_metadata_master(data_dir, clean=True, remove=True)
-```
+These grab the data from Court Listener and create csv files that contain the data we care about (e.g. case data, jurisdiction list, etc)
 
-To create the node_metadata for the FISC subnetwork
+make_clean_data.py and cleaning_functions
+These take the raw data and clean it i.e. get rid of the certiorari cases
 
-```
-data_dir = 'data/'
-court_name = 'fisc'
-from download_data import make_node_metadata_court
-make_node_metadata_court(court_name, data_dir, clean=True, remove=True)
-```
-
-To download the opinion and cluster cases from the Foreign Intelligence Surveillance Court
+To load the SCOTUS citation network (if cwd is explore/)
 
 ```
-data_dir = 'data/'
-from download_data import download_court_data
-court_name, data_dir = 'fisc'
-download_court_data(court_name, data_dir)
+import networkx as nx
+import pandas as pd
+
+from load data import load_citation_network
+
+data_dir = '../data/'
+
+network = load_citation_network(data_dir, 'scotus')
+```
+
+To load the jurisdiction network
+```
+import networkx as nx
+import pandas as pd
+
+from load data import load_jurisdiction_network
+
+data_dir = '../data/'
+
+network = load_jurisdiction_network(data_dir)
 ```
