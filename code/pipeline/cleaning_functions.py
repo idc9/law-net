@@ -4,7 +4,7 @@ import networkx as nx
 import os
 
 # from load_data import get_network
-from download_data import json_to_dict
+from download_data import json_to_dict, download_bulk_resource
 
 
 def get_network(case_metadata, edgelist):
@@ -18,7 +18,7 @@ def get_network(case_metadata, edgelist):
     return G
 
 
-def get_cert_cases_scotus(data_dir):
+def get_cert_cases_scotus(data_dir, remove=False):
     """
     Finds the certiorari cases from SCOTUS
 
@@ -27,6 +27,9 @@ def get_cert_cases_scotus(data_dir):
     python list of certiorari cases
     """
     court_name = 'scotus'
+    op_dir = data_dir + 'raw/' + court_name + '/opinions/'
+    if not os.path.exists(op_dir):
+        download_bulk_resource(court_name, 'opinions', data_dir)
 
     # grab all scotus cases
     case_meatadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
@@ -46,7 +49,6 @@ def get_cert_cases_scotus(data_dir):
     degrees = G.degree()
 
     # find zero degree cases that contain the words: 'denied' or 'certiorari'
-    op_dir = data_dir + 'raw/' + court_name + '/opinions/'
     case_meatadata['cert_case'] = False
     for case, _ in case_meatadata.iterrows():
         op_path = op_dir + str(case) + '.json'
@@ -59,6 +61,15 @@ def get_cert_cases_scotus(data_dir):
                     if type(value) is unicode:
                         if 'denied' in value or 'certiorari' in value:
                             case_meatadata.loc[case, 'cert_case'] = True
+        else:
+            print 'warning no opinion file for for case %d' % case
+
+    if remove:
+        # remove opinion files
+        for file_name in os.lisdir(op_dir):
+            os.remove(file_name)
+
+        os.rmdir(op_dir)
 
     return case_meatadata[case_meatadata['cert_case']].index.tolist()
 

@@ -14,7 +14,7 @@ def load_citation_network(data_dir, court_name):
     ----------
     data_dir: path to data directory
 
-    network: which subnetwork i.e. fisc, scotus, etc
+    court_name: which subnetwork i.e. fisc, scotus, etc
     'entire' gets the entire network
 
     metadata: which metadata to load
@@ -63,15 +63,6 @@ def load_jurisdiction_network(data_dir):
     Parameters
     ----------
     data_dir: path to data directory
-
-    network: which subnetwork i.e. fisc, scotus, etc
-    'entire' gets the entire network
-
-    metadata: which metadata to load
-
-    multi: if True then edges are directed, there can be self loops
-
-    weighted: binary edge weights or counts of citations
     """
 
     pass
@@ -93,16 +84,3 @@ def case_info(case_id):
     print
     print opinion_url
     print
-
-
-# def load_jurisdictions(data_dir):
-#     """
-#     load the juridictions
-#     """
-#     jurisdictions = pd.read_csv(data_dir + 'clean/jurisdictions.csv')
-#
-#     # reindex by abbrev
-#     jurisdictions.set_index('abbrev', drop=True, inplace=True)
-#     jurisdictions.index.name = 'abbrev'
-#
-#     return jurisdictions

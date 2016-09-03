@@ -21,22 +21,27 @@ def make_clean_case_metadata(data_dir, overwrite=False):
     """
     # TODO: implement some cleaning functions
     # if the master file is already there don't overwrite it unless told to
-    if (not overwrite) and (os.path.isfile(data_dir + 'clean/case_metadata_master.csv')):
-        raise ValueError('case metadata file already exists')
+    if os.path.isfile(data_dir + 'clean/case_metadata_master.csv'):
+        if overwrite:
+            os.remove(data_dir + 'clean/case_metadata_master.csv')
+        else:
+            raise ValueError('case metadata file already exists')
 
     # if case_metadata_master_r does not exist then download it
     if not os.path.isfile(data_dir + 'raw/case_metadata_master_r.csv'):
         make_raw_case_metadata_master(data_dir, remove=True)
 
-    raw_metadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv')
+    raw_metadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
+                               index_col='id')
 
     # TODO: create additional cleaning functions
     cert_cases = get_cert_cases_scotus(data_dir)
-    pd.DataFrame({'cert': cert_cases}).to_csv(data_dir + 'raw/cert.csv')
+    # pd.DataFrame({'cert': cert_cases}).to_csv(data_dir + 'raw/cert.csv')
 
     clean_metadata = raw_metadata.drop(cert_cases)
 
-    clean_metadata.to_csv(data_dir + 'clean/case_metadata_master.csv')
+    clean_metadata.to_csv(data_dir + 'clean/case_metadata_master.csv',
+                          index=True)
 
 
 def make_clean_edgelist(data_dir, overwrite=False):
