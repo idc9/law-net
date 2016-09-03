@@ -3,8 +3,19 @@ import numpy as np
 import networkx as nx
 import os
 
-from load_data import get_network
+# from load_data import get_network
 from download_data import json_to_dict
+
+
+def get_network(case_metadata, edgelist):
+    G = nx.DiGraph()
+    G.add_nodes_from(case_metadata.index.tolist())
+    for index, edge in edgelist.iterrows():
+        ing = edge['citing']
+        ed = edge['cited']
+
+        G.add_edge(ing, ed)
+    return G
 
 
 def get_cert_cases_scotus(data_dir):

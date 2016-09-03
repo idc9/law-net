@@ -2,18 +2,8 @@ import pandas as pd
 import networkx as nx
 import os
 
-from download_data import url_to_dict
-
-
-def get_network(case_metadata, edgelist):
-    G = nx.DiGraph()
-    G.add_nodes_from(case_metadata.index.tolist())
-    for index, edge in edgelist.iterrows():
-        ing = edge['citing']
-        ed = edge['cited']
-
-        G.add_edge(ing, ed)
-    return G
+from pipeline.download_data import url_to_dict
+from pipeline.make_clean_data import make_court_subnetwork
 
 
 def load_citation_network(data_dir, network):
@@ -35,7 +25,7 @@ def load_citation_network(data_dir, network):
                                 index_col='court')
 
     all_courts = set(jurisdictions.index)
-    if (network not in all_courts) or (network != 'all'):
+    if not((network not in all_courts) or (network == 'all')):
         raise ValueError('invalid network')
 
     if network == 'all':
@@ -46,20 +36,24 @@ def load_citation_network(data_dir, network):
     else:
         net_dir = data_dir + 'clean/' + network + '/'
         if not os.path.exists(net_dir):
-            make_court_subnetwork(court_name, data_dir)
+            os.makedirs(net_dir)
+            make_court_subnetwork(network, data_dir)
 
-        case_meatadata = pd.read_csv(net_dir + '/case_metadata.csv',
-                                     index_col='id')
+        case_metadata = pd.read_csv(net_dir + 'case_metadata.csv',
+                                    index_col='id')
 
-        edgelist = pd.read_csv(net_dir + 'clean/edgelist.csv')
+        edgelist = pd.read_csv(net_dir + 'edgelist.csv')
 
     G = nx.DiGraph()
     G.add_nodes_from(case_metadata.index.tolist())
+    nx.set_node_attributes(G, 'date', case_metadata['dates'])
     for index, edge in edgelist.iterrows():
         ing = edge['citing']
         ed = edge['cited']
 
         G.add_edge(ing, ed)
+
+
 
     return G
 
