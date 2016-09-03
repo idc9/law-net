@@ -22,10 +22,10 @@ def load_citation_network(data_dir, network):
     directed: are the edges directed
     """
     jurisdictions = pd.read_csv(data_dir + 'clean/jurisdictions.csv',
-                                index_col='court')
+                                index_col='abbrev')
 
     all_courts = set(jurisdictions.index)
-    if not((network not in all_courts) or (network == 'all')):
+    if not((network in all_courts) or (network == 'all')):
         raise ValueError('invalid network')
 
     if network == 'all':
@@ -44,16 +44,14 @@ def load_citation_network(data_dir, network):
 
         edgelist = pd.read_csv(net_dir + 'edgelist.csv')
 
+    # create graph and add metadata
     G = nx.DiGraph()
     G.add_nodes_from(case_metadata.index.tolist())
-    nx.set_node_attributes(G, 'date', case_metadata['dates'])
+    nx.set_node_attributes(G, 'date', case_metadata['date'].to_dict())
     for index, edge in edgelist.iterrows():
         ing = edge['citing']
         ed = edge['cited']
-
         G.add_edge(ing, ed)
-
-
 
     return G
 
