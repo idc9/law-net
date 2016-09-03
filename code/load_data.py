@@ -6,7 +6,7 @@ from pipeline.download_data import url_to_dict
 from pipeline.make_clean_data import make_court_subnetwork
 
 
-def load_citation_network(data_dir, network):
+def load_citation_network(data_dir, court_name):
     """
     Loads the citation subnetwork into networkx
 
@@ -25,19 +25,19 @@ def load_citation_network(data_dir, network):
                                 index_col='abbrev')
 
     all_courts = set(jurisdictions.index)
-    if not((network in all_courts) or (network == 'all')):
-        raise ValueError('invalid network')
+    if not((court_name in all_courts) or (court_name == 'all')):
+        raise ValueError('invalid court_name')
 
-    if network == 'all':
+    if court_name == 'all':
         case_meatadata = pd.read_csv(data_dir + '/case_metadata_master.csv',
                                      index_col='id')
 
         edgelist = pd.read_csv(data_dir + 'clean/edgelist_master.csv')
     else:
-        net_dir = data_dir + 'clean/' + network + '/'
+        net_dir = data_dir + 'clean/' + court_name + '/'
         if not os.path.exists(net_dir):
             os.makedirs(net_dir)
-            make_court_subnetwork(network, data_dir)
+            make_court_subnetwork(court_name, data_dir)
 
         case_metadata = pd.read_csv(net_dir + 'case_metadata.csv',
                                     index_col='id')
