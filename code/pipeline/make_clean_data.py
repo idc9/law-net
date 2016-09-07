@@ -98,7 +98,7 @@ def make_jurisdiction_edgelist(data_dir):
     case_metadata = pd.read_csv(data_dir + 'clean/case_metadata_master.csv',
                                 index_col='id')
     jurisdictions = pd.read_csv(data_dir + 'clean/jurisdictions.csv',
-                                index_col='court')
+                                index_col='abbrev')
 
     court_adj = pd.DataFrame(0,
                              index=jurisdictions.index.tolist(),
