@@ -29,8 +29,8 @@ def load_citation_network(data_dir, court_name):
         raise ValueError('invalid court_name')
 
     if court_name == 'all':
-        case_meatadata = pd.read_csv(data_dir + '/case_metadata_master.csv',
-                                     index_col='id')
+        case_metadata = pd.read_csv(data_dir + 'clean/case_metadata_master.csv',
+                                    index_col='id')
 
         edgelist = pd.read_csv(data_dir + 'clean/edgelist_master.csv')
     else:
