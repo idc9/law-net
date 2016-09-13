@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import warnings
+from scipy.stats import rankdata
+
 
 def get_pairs(X):
     """
@@ -40,3 +42,13 @@ def upper_trimed_mean(x, alpha):
         return np.mean(x)
 
     return np.mean(sorted(x)[-n_trunc:])
+
+
+def rankdata_reverse(x):
+    """
+    returns the ranks of data if large numbers are good i.e.
+
+    >>> rankdata_reverse([3, 2, 1])
+    >>> 1, 2, 3
+    """
+    return rankdata([-v for v in x], method='min')
