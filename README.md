@@ -1,4 +1,4 @@
-# law-net-iain
+# law-net
 What can we learn by applied network analysis to the law? This project contains code to analyze the law case citation network using data generously provided by [CourtListener](https://www.courtlistener.com/). You will find code that creates the pipeline that takes data from CourtListener and creates various citation networks such as
 
 - entire law case citation network (this is ~3 million nodes and ~30 million edges)
