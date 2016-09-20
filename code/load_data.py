@@ -131,10 +131,11 @@ def load_citation_network_igraph(data_dir, court_name, directed=True):
     g.add_edges(ig_edgelist)
 
     # add vertex attributes
-    g.vs['court'] =  case_metadata['court'].tolist()
+    g.vs['court'] = case_metadata['court'].tolist()
     g.vs['year'] = [int(d.split('-')[0]) for d in case_metadata['date'].tolist()]
 
     end = time.time()
+    g.simplify(multiple=True)
 
     print '%d seconds for %d edges' % (end - start, len(g.es))
     return g
