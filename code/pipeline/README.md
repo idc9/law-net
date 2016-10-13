@@ -1,4 +1,4 @@
-# data pipline
+# data pipeline
 
 These scripts make up our data pipeline which goes something like
 
