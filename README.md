@@ -13,7 +13,7 @@ To load the SCOTUS citation network (if cwd is explore/)
 import networkx as nx
 import pandas as pd
 
-from load data import load_citation_network
+from load_data import load_citation_network
 
 data_dir = '../data/'
 
@@ -25,7 +25,7 @@ To load the jurisdiction network
 import networkx as nx
 import pandas as pd
 
-from load data import load_jurisdiction_network
+from load_data import load_jurisdiction_network
 
 data_dir = '../data/'
 
