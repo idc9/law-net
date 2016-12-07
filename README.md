@@ -9,6 +9,8 @@ Note that 'entire' does not actually mean we have every court case. We are still
 
 To get started with the data see [getting_started.ipynb](https://github.com/idc9/law-net/blob/master/getting_started.ipynb). User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon.
 
+We are not storing the data (edgelist, vertex metadata, etc) on github since these are several hundred megabyte files. You can use our code to download the data or you can as [Iain](iain@unc.edu) to send you the .csv files which might save you waiting a few hours for the data to download. In the future we will have a better solution for this...
+
 If you are interested in collaborating feel free to reach out to us!
 
 
