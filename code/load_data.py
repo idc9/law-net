@@ -137,7 +137,6 @@ def load_citation_network_igraph(data_dir, court_name, directed=True):
     end = time.time()
     g.simplify(multiple=True)
 
-    print '%d seconds for %d edges' % (end - start, len(g.es))
     return g
 
 
@@ -157,3 +156,25 @@ def case_info(case_id):
     print
     print opinion_url
     print
+
+
+def load_and_clean_graph(data_dir, court_name):
+    """
+    Kills edges going the wrong way in time
+
+    Output
+    ------
+    igraph object
+    """
+    G = load_citation_network_igraph(data_dir, court_name)
+    all_edges = G.get_edgelist()  # list of tuples
+    bad_edges = []
+    for edge in all_edges:
+        citing_year = G.vs(edge[0])['year'][0]
+        cited_year = G.vs(edge[1])['year'][0]
+
+        if citing_year < cited_year:
+            bad_edges.append(edge)
+
+    G.delete_edges(bad_edges)
+    return G
