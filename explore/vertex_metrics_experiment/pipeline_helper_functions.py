@@ -1,6 +1,6 @@
 import glob
 import pandas as pd
-
+import numpy as np
 
 def load_snapshots(experiment_data_dir, train=True):
     """
@@ -35,6 +35,62 @@ def load_snapshots(experiment_data_dir, train=True):
     return snapshots_dict
 
 
+def get_snapshot_year(ing_year, snapshot_year_list):
+    """
+    Returns the smallest year greater than ing year
+    """
+    return min([y for y in snapshot_year_list if ing_year < y])
+
+
+def get_edge_data(G, edgelist, snapshot_df, similarity_matrix, edge_status=None):
+    """
+    Returns a data frame for all edges from given edge list
+    """
+
+    num_edges = len(edgelist)
+
+    # CL ids of ed cases (indexes the snap_df rows)
+    ed_CLids = [G.vs[edge[1]]['name'] for edge in edgelist]
+    ing_CLids = [G.vs[edge[0]]['name'] for edge in edgelist]
+
+    # ages
+    ed_year = np.array([G.vs[edge[1]]['year'] for edge in edgelist])
+    ing_year = np.array([G.vs[edge[0]]['year'] for edge in edgelist])
+
+    # get case similarities
+    similarities = [0] * num_edges
+    for i in range(num_edges):
+        # similarities[i] = similarity_matrix.ix[ing_CLids[i], ed_CLids[i]]
+        similarities[i] = 0
+
+    # ed metrics in ing year
+    ed_metrics = snapshot_df.loc[ed_CLids]
+
+    # create edge data frame
+    edge_data = pd.DataFrame()
+    edge_data['indegree'] = ed_metrics['indegree'].tolist()
+    edge_data['l_pagerank'] = ed_metrics['l_pagerank'].tolist()
+
+    edge_data['age'] = ing_year - ed_year
+    edge_data['similarity'] = similarities
+
+    # add edge status
+    if edge_status == 'present':
+        is_edge = [1] * num_edges
+    elif edge_status == 'absent':
+        is_edge = [0] * num_edges
+    else:
+        # TODO: check if edge is present
+        is_edge = [-999] * num_edges
+
+    edge_data['is_edge'] = is_edge
+
+    edge_data.index = [str(edge[0]) + '_' + str(edge[1]) for edge in edgelist]
+    edge_data.index.name = 'CLids'
+
+    return edge_data
+
+
 def edge_data_row(citing_vertex, cited_vertex, ing_snapshot_df):
     """
     Returns one row of the edge data frame
@@ -49,6 +105,8 @@ def edge_data_row(citing_vertex, cited_vertex, ing_snapshot_df):
     ------
     returns a tuple
     """
+    # TODO: can probably kill this
+
     # grab vertex metadata
     citing_name = citing_vertex['name'][0]
     cited_name = cited_vertex['name'][0]
@@ -61,10 +119,3 @@ def edge_data_row(citing_vertex, cited_vertex, ing_snapshot_df):
            (citing_name, cited_name, citing_year, cited_year) + \
            (citing_year - cited_year) + \
            tuple(cited_vertex_metrics)
-
-
-def get_snapshot_year(ing_year, snapshot_year_list):
-    """
-    Returns the smallest year greater than ing year
-    """
-    return min([y for y in snapshot_year_list if ing_year < y])

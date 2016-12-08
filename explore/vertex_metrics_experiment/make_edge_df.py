@@ -2,78 +2,95 @@ from __future__ import division
 import pandas as pd
 import glob
 import random as random
+import copy
 
 from pipeline_helper_functions import *
 
 
-def get_snapshot_edge_metrics_dep(G, experiment_data_dir,
-                              year_interval,
-                              num_non_edges_to_add,
-                              seed=None):
+def make_edge_df(G, experiment_data_dir, snapshot_year_list,
+                 num_non_edges_to_add, columns_to_use, seed=None):
 
+    # load snapshot dataframes
     snapshots_dict = load_snapshots(experiment_data_dir, train=True)
 
-    # list of edges that will be added to the edge df
-    edgedata_list = []
+    # similarity_matrix = pd.read_csv(experiment_data_dir + 'similarity_matrix.csv', index_col=0)
+    similarity_matrix = 0
+
+    # initialize edge data frame
+    colnames = copy.deepcopy(columns_to_use)
+    colnames.append('is_edge')
+    edge_data = pd.DataFrame(columns=colnames)
 
     # get all present edges
-    edgelist_to_add = G.get_edgelist()
-    fill_edgedata_list(edgedata_list, G, edgelist_to_add, year_interval,
-                       snapshots_dict, edges_exist=True)
+    present_edgelist = G.get_edgelist()
+
+    # organize edges by ing snapshot year
+    edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, present_edgelist,
+                                                         snapshot_year_list)
+
+    # add present edge data
+    for sn_year in snapshot_year_list:
+        # vertex metrcs in snapshot year
+        snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
+
+        # edges to add whos ing year is in the snapshot year
+        edges = edges_by_snap_year_dict[sn_year]
+
+        # get snapshot year edge data frame
+        sn_edge_data = get_edge_data(G, edges, snapshot_df,
+                                     similarity_matrix, edge_status='present')
+        edge_data = edge_data.append(sn_edge_data)
 
     # get a sample of non-present edges
-    nonedges_to_add = sample_non_edges(G, year_interval, num_non_edges_to_add,
-                                       seed=seed)
+    absent_edgelist = sample_non_edges(G, num_non_edges_to_add, seed=seed)
 
-    fill_edgedata_list(edgedata_list, G, nonedges_to_add, year_interval,
-                       snapshots_dict, edges_exist=False)
+    # organize edges by ing snapshot year
+    edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, absent_edgelist,
+                                                         snapshot_year_list)
 
-    column_names = ['edge'] + \
-                   ['ing_name', 'ed_name', 'ing_year', 'ed_year', 'age'] + \
-                   ['age'] + \
-                   snapshots_dict.values()[0].columns.values.tolist()
+    # add absent edge data
+    for sn_year in snapshot_year_list:
+        # vertex metrcs in snapshot year
+        snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
 
-    df = pd.DataFrame(edgedata_list, columns=column_names)
-    df.to_csv(experiment_data_dir + 'edge_data.csv')
+        # edges to add whos ing year is in the snapshot year
+        edges = edges_by_snap_year_dict[sn_year]
+
+        # get edge data frame for snapshot year
+        sn_edge_data = get_edge_data(G, edges, snapshot_df,
+                                     similarity_matrix, edge_status='absent')
+        edge_data = edge_data.append(sn_edge_data)
+
+    edge_data.to_csv(experiment_data_dir + 'edge_data.csv')
 
 
-def fill_edgedata_list(edgedata_list,
-                       G,
-                       edgelist_to_add,
-                       year_interval,
-                       snapshots_dict,
-                       edges_exist):
+def get_edges_by_snapshot_dict(G, edgelist, snapshot_year_list):
     """
-    Modifies edges_to_add_list in place by appending edge rows
+    Organizes edges by ing snapshot year
+
     """
 
-    # are we adding existing edges or non-existant edges
-    if edges_exist:
-        class_label = 1
-    else:
-        class_label = 0
+    num_edges = len(edgelist)
 
-    for edge in edgelist_to_add:
+    # get the citing year of each edge
+    ing_years = [G.vs[edge[0]]['year'] for edge in edgelist]
 
-        # grab igraph vertices
-        citing_vertex = G.vs(edge[0])
-        cited_vertex = G.vs(edge[1])
+    # map the citing year to the snapshot year
+    snap_ing_years = [get_snapshot_year(y, snapshot_year_list)
+                      for y in ing_years]
 
-        citing_year = citing_vertex['year'][0]
+    # dict that organizes edges by ing snapshot year
+    edges_by_ing_snap_year_dict = {y: [] for y in snapshot_year_list}
+    for i in range(num_edges):
+        sn_year = snap_ing_years[i]
+        edge = edgelist[i]
 
-        # determine which vertex_df to retrieve
-        ing_snapshot_year = citing_year + \
-                            (year_interval - citing_year % year_interval)
+        edges_by_ing_snap_year_dict[sn_year].append(edge)
 
-        # get data from snapshot_dict
-        ing_snapshot_df = snapshots_dict['vertex_metrics_' +
-                                         str(ing_snapshot_year)]
-
-        edgedata_list.append(edge_data_row(citing_vertex,
-                                           cited_vertex, ing_snapshot_df))
+    return edges_by_ing_snap_year_dict
 
 
-def sample_non_edges(G, year_interval, num_non_edges_to_add, seed=None):
+def sample_non_edges(G, num_non_edges_to_add, seed=None):
     '''
     Samples a number of nonexistent edges from the network G
 
@@ -91,7 +108,7 @@ def sample_non_edges(G, year_interval, num_non_edges_to_add, seed=None):
     '''
     # TODO: make seed work for ranomd package
     if seed:
-        np.random.seed(seed) # set seed for random packakge!
+        np.random.seed(seed)  # set seed for random packakge!
 
     # set makes adding 'edge_tuple' unique in the while loop
     # (need b/c random sampling can return duplicates)
