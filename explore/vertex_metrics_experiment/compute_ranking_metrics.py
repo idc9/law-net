@@ -3,12 +3,14 @@ import numpy as np
 import random as random
 import pandas as pd
 
+from pipeline_helper_functions import *
+
 
 def compute_ranking_metrics(G,
                             LogReg,
                             columns_to_use,
                             experiment_data_dir,
-                            year_interval,
+                            snapshot_year_list,
                             R,
                             seed=None):
     '''
@@ -38,7 +40,7 @@ def compute_ranking_metrics(G,
     '''
 
     if seed:
-        np.random.seed(seed)
+        random.seed(seed)
 
     # select cases for sample
     vertices = set(G.vs)
@@ -47,47 +49,74 @@ def compute_ranking_metrics(G,
     test_case_rank_scores = []
     test_case_out_degrees = []
 
-    snapshots_dict = load_snapshots(experiment_data_dir)
+    # load snapshots
+    snapshots_dict = load_snapshots(experiment_data_dir, train=True)
+
+    # similarity_matrix = pd.read_csv(experiment_data_dir + 'similarity_matrix.csv', index_col=0)
+    similarity_matrix = 0
 
     # calculate each case's score
     for ing_case in cases_to_test:
+        ing_year = ing_case['year']
+
         # get neighbors
-        actual_citations = G.neighbors(case.index, mode='OUT')
+        actual_citations = G.neighbors(ing_case.index, mode='OUT')
         num_citations = len(actual_citations)
 
         # only score cases who cite at least one case
         if num_citations >= 1:
 
             # determine which vertex_df to retrieve
-            year = ing_case['year'] + (year_interval - ing_case['year'] % year_interval)
+            snapshot_year = get_snapshot_year(ing_case['year'],
+                                              snapshot_year_list)
 
             # look-up that dataframe from given path
-            ing_snapshot_df = snapshots_dict['vertex_metrics_' + str(year)]
+            snapshot_df = snapshots_dict['vertex_metrics_' +
+                                         str(snapshot_year)]
 
-            # number of cases in this snapshot
-            num_cases = ing_snapshot_df.shape[0]
+            # restrict ourselves to ancestors of ing case
+            ancentors = [v.index for v in G.vs.select(year_le=ing_year)]
+            num_ancentors = len(ancentors)
 
-            # create df that the logistical regression object will evaluate
-            x_test_df = make_test_data(G, ing_snapshot_df, ing_vertex, columns_to_use)
+            # all edges from ing case to previous cases
+            edgelist = zip([ing_case.index] * len(ancentors), ancentors)
+
+            # compute edge data
+            edge_data = get_edge_data(G, edgelist, snapshot_df,
+                                      similarity_matrix, edge_status=None)
 
             # probability a case is cited
-            citation_probs = get_attachment_probabilty_logreg(LogReg, x_test_df)
+            citation_probs = get_attachment_probabilty_logreg(LogReg,
+                                                              edge_data)
 
             # sort by attachment probabilities
             citation_probs.sort_values('citation_prob', ascending=False,
                                        kind='mergesort', inplace=True)
 
+            # case rankings (CL ids)
+            cases_ranking = np.array([int(e.split('_')[1])
+                                      for e in citation_probs.index])
 
             # keep track of how many citations case has
-            test_case_out_degrees.append(num_citations)
+            # test_case_out_degrees.append(num_citations)
 
             # rank and citaions
             case_scores = []
+            # case_ranks = [] # could keep track of this if we wanted
 
-            for i in actual_citations:
-                rank_of_actual_citation = citation_probs.index.get_loc(G.vs[i]['name']) + 1.0
-                rank_score = get_rank_score(rank_of_actual_citation, num_cases)
+            for cited_ig in actual_citations:
+
+                # CL id of actual citation
+                cited = int(G.vs[cited_ig]['name'])
+
+                # where cited case was ranked
+                rank = np.where(cases_ranking == cited)[0][0]
+
+                # score the ranking
+                rank_score = get_rank_score(rank, num_ancentors)
+
                 case_scores.append(rank_score)
+                # case_ranks.append(rank)
 
             # average over all citations
             avg_rank_score = np.mean(case_scores)
@@ -96,27 +125,6 @@ def compute_ranking_metrics(G,
             test_case_rank_scores.append(avg_rank_score)
 
     return test_case_rank_scores
-
-
-def make_test_data(G, ing_snapshot_df, ing_vertex, columns_to_use):
-    # TODO: probably not the right way to to this
-    # should copy over the ing_snapshot_df and then add columns
-    ed_case_ids = ing_snapshot_df.index
-
-    edgedata_list = []
-    for ed_case_id in ed_case_ids:
-        cited_vertex = G.vs.find('ed_case_id')
-        edgerow = edge_data_row(citing_vertex, cited_vertex, ing_snapshot_df)
-        edgedata_list.append()
-
-    column_names = ['edge'] + \
-                   ['ing_name', 'ed_name', 'ing_year', 'ed_year', 'age'] + \
-                   ['age'] + \
-                   snapshots_dict.values()[0].columns.values.tolist()
-
-    df = pd.DataFrame(edgedata_list, columns=column_names)
-
-    return df[columns_to_use]
 
 
 def get_attachment_probabilty_logreg(LogReg, X):
@@ -135,7 +143,7 @@ def get_attachment_probabilty_logreg(LogReg, X):
     ------
     returns a list of df of attachment probabilities
     '''
-    # TODO: is class 0 citation or class 1??
+    # TODO: double check we have classes right and order of X cols right
 
     # create probability data frame
     prob_df = pd.DataFrame(index=X.index)
@@ -159,4 +167,4 @@ def get_rank_score(position, number_of_items):
 
     number_of_items: how many items were ranked
     """
-    return 1.0 - float(position) / number_of_items
+    return 1.0 - float(position) / (number_of_items - 1.0)

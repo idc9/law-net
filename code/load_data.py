@@ -177,4 +177,12 @@ def load_and_clean_graph(data_dir, court_name):
             bad_edges.append(edge)
 
     G.delete_edges(bad_edges)
+
+    # make name a string
+    G.vs['name'] = [str(n) for n in G.vs['name']]
+
+    # kill detroit lumber case
+    detroit_case = G.vs.find('96405')
+    G.delete_vertices(detroit_case)
+
     return G

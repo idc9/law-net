@@ -2,6 +2,7 @@ import glob
 import pandas as pd
 import numpy as np
 
+
 def load_snapshots(experiment_data_dir, train=True):
     """
     Loads the snapshot data frames into a dict indexed by the file names
@@ -42,7 +43,8 @@ def get_snapshot_year(ing_year, snapshot_year_list):
     return min([y for y in snapshot_year_list if ing_year < y])
 
 
-def get_edge_data(G, edgelist, snapshot_df, similarity_matrix, edge_status=None):
+def get_edge_data(G, edgelist, snapshot_df, similarity_matrix,
+                  edge_status=None):
     """
     Returns a data frame for all edges from given edge list
     """
@@ -50,8 +52,8 @@ def get_edge_data(G, edgelist, snapshot_df, similarity_matrix, edge_status=None)
     num_edges = len(edgelist)
 
     # CL ids of ed cases (indexes the snap_df rows)
-    ed_CLids = [G.vs[edge[1]]['name'] for edge in edgelist]
-    ing_CLids = [G.vs[edge[0]]['name'] for edge in edgelist]
+    ed_CLids = [int(G.vs[edge[1]]['name']) for edge in edgelist]
+    ing_CLids = [int(G.vs[edge[0]]['name']) for edge in edgelist]
 
     # ages
     ed_year = np.array([G.vs[edge[1]]['year'] for edge in edgelist])
@@ -75,20 +77,33 @@ def get_edge_data(G, edgelist, snapshot_df, similarity_matrix, edge_status=None)
     edge_data['similarity'] = similarities
 
     # add edge status
-    if edge_status == 'present':
-        is_edge = [1] * num_edges
-    elif edge_status == 'absent':
-        is_edge = [0] * num_edges
-    else:
-        # TODO: check if edge is present
-        is_edge = [-999] * num_edges
+    if edge_status is not None:
+        if edge_status == 'present':
+            is_edge = [1] * num_edges
+        elif edge_status == 'absent':
+            is_edge = [0] * num_edges
+        elif edge_status == 'find':
+            is_edge = [int(edge_is_present(G, e[0], e[1])) for e in edgelist]
 
-    edge_data['is_edge'] = is_edge
+        edge_data['is_edge'] = is_edge
 
-    edge_data.index = [str(edge[0]) + '_' + str(edge[1]) for edge in edgelist]
+    edge_data.index = [str(ing_CLids[i]) + '_' + str(ed_CLids[i])
+                       for i in range(num_edges)]
     edge_data.index.name = 'CLids'
 
     return edge_data
+
+
+def edge_is_present(G, source, target):
+    """
+    Returns true of there is an edge from source to target
+
+    Parameters
+    source, target: igraph vertex indices
+
+    G: directed igraph object
+    """
+    return G.get_eid(v1=source, v2=target, directed=True, error=False) != -1
 
 
 def edge_data_row(citing_vertex, cited_vertex, ing_snapshot_df):

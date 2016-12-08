@@ -13,6 +13,9 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
     # load snapshot dataframes
     snapshots_dict = load_snapshots(experiment_data_dir, train=True)
 
+    if len(snapshots_dict) == 0:
+        raise ValueError('failed ot load snapshots train')
+
     # similarity_matrix = pd.read_csv(experiment_data_dir + 'similarity_matrix.csv', index_col=0)
     similarity_matrix = 0
 
@@ -33,7 +36,7 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
         # vertex metrcs in snapshot year
         snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
 
-        # edges to add whos ing year is in the snapshot year
+        # edges to add whose ing year is in the snapshot year
         edges = edges_by_snap_year_dict[sn_year]
 
         # get snapshot year edge data frame
@@ -106,9 +109,9 @@ def sample_non_edges(G, num_non_edges_to_add, seed=None):
     --------
     List of non-present edges
     '''
-    # TODO: make seed work for ranomd package
+    # TODO: possibly speed this up
     if seed:
-        np.random.seed(seed)  # set seed for random packakge!
+        random.seed(seed)
 
     # set makes adding 'edge_tuple' unique in the while loop
     # (need b/c random sampling can return duplicates)

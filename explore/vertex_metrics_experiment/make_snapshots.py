@@ -6,7 +6,8 @@ import numpy as np
 import re
 
 
-def get_snapshot_vertex_metrics(G, years, vertex_metrics, experiment_data_dir):
+def make_snapshot_vertex_metrics(G, snapshot_year_list, vertex_metrics,
+                                 experiment_data_dir):
     """
     Creates the data frames with vertex metics in given years
 
@@ -27,7 +28,7 @@ def get_snapshot_vertex_metrics(G, years, vertex_metrics, experiment_data_dir):
     """
 
     # create a vertex df for each year T
-    for T in years:
+    for T in snapshot_year_list:
         # get subgraph at particular time
         G_T = get_network_at_time(G, T)
 
@@ -44,6 +45,22 @@ def get_snapshot_vertex_metrics(G, years, vertex_metrics, experiment_data_dir):
         file_path = experiment_data_dir + 'snapshots/vertex_metrics_' \
                                         + str(T) + '.csv'
         df_T.to_csv(file_path, index=True)
+
+
+def make_transformed_snaphots(experiment_data_dir):
+    """
+    Transforms the raw snapshot data frames into training data
+    """
+    snapshots_dict = load_snapshots(experiment_data_dir, train=False)
+
+    train_path = experiment_data_dir + 'snapshots_train/'
+
+    for snap in snapshots_dict.keys():
+        snapshot_year = int(re.findall(r'\d+', snap)[0])
+        snap_train = transform_snaphots(snapshot_df=snapshots_dict[snap],
+                                        snapshot_year=snapshot_year)
+        snap_train.to_csv(train_path + snap + '.csv',
+                          index=True)
 
 
 def get_network_at_time(G, T):
@@ -94,22 +111,6 @@ def create_metric_column(G_T, metric):
         return
 
     return metric_column
-
-
-def run_transform_snaphots(experiment_data_dir):
-    """
-    Transforms the raw snapshot data frames into training data
-    """
-    snapshots_dict = load_snapshots(experiment_data_dir, train=False)
-
-    train_path = experiment_data_dir + 'snapshots_train/'
-
-    for snap in snapshots_dict.keys():
-        snapshot_year = int(re.findall(r'\d+', snap)[0])
-        snap_train = transform_snaphots(snapshot_df=snapshots_dict[snap],
-                                        snapshot_year=snapshot_year)
-        snap_train.to_csv(train_path + snap + '.csv',
-                          index=True)
 
 
 def transform_snaphots(snapshot_df, snapshot_year):
