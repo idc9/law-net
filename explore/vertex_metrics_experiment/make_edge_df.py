@@ -3,101 +3,77 @@ import pandas as pd
 import glob
 import random as random
 
+from pipeline_helper_functions import *
 
-def get_snapshot_edge_metrics(G, experiment_data_dir, year_interval,
-                              num_non_edges_to_add):
-    """
-    Creates the edge data frame. Rows are edges. Columns are the metrics
-    of cited case in citing case's year (also year of citing case).
 
-    Include all edges that exist in the network and
-    randomly add non existent edges.
+def get_snapshot_edge_metrics_dep(G, experiment_data_dir,
+                              year_interval,
+                              num_non_edges_to_add,
+                              seed=None):
 
-    Parameters
-    ----------
-    G: network
-
-    path_to_vertex_metrics_folder: where can we find the vertex metrics
-
-    year_interval: the year interval between each vertex metric .csv file
-
-    num_non_edges_to_add: how many nonexistent edges to add
-
-    Output
-    --------
-    Saves edge data frame as a csv file
-    """
-    # load all the vertex metric dataframes into a dict so
-    # they only have to be read in once
-    path_to_vertex_metrics_folder = experiment_data_dir + 'snapshots/'
-    all_vertex_metrics_df = glob.glob(path_to_vertex_metrics_folder +
-                                      "/vertex_metrics*.csv")
-    vertex_metric_dict = {}
-    for vertex_metrc_df in all_vertex_metrics_df:
-        # add df to dict with filepath as key
-        vertex_metric_dict[vertex_metrc_df] = pd.read_csv(vertex_metrc_df,
-                                                          index_col=0)
+    snapshots_dict = load_snapshots(experiment_data_dir, train=True)
 
     # list of edges that will be added to the edge df
-    edges_to_add_list = []
+    edgedata_list = []
 
     # get all present edges
-    edges_to_add = G.get_edgelist()
-
-    # go through each edge and add it to a list which will become the df
-    for edge in edges_to_add:
-        # get info from edge
-        citing_year = G.vs(edge[0])['year'][0]
-        cited_name = G.vs(edge[1])['name'][0]
-
-        # determine which vertex_df to retrieve
-        year = citing_year + (year_interval - citing_year % year_interval)
-
-        # look-up that dataframe from given path
-        vertex_df = vertex_metric_dict[path_to_vertex_metrics_folder +
-                                       'vertex_metrics_' +
-                                       str(year) + '.csv']
-
-        # get row from df using cited_name
-        row = vertex_df.loc[cited_name].values.tolist()
-
-        edge_tuple = (1,) + tuple(row)
-        edges_to_add_list.append(edge_tuple)
+    edgelist_to_add = G.get_edgelist()
+    fill_edgedata_list(edgedata_list, G, edgelist_to_add, year_interval,
+                       snapshots_dict, edges_exist=True)
 
     # get a sample of non-present edges
-    non_edges_to_add = sample_non_edges(G, year_interval, num_non_edges_to_add)
+    nonedges_to_add = sample_non_edges(G, year_interval, num_non_edges_to_add,
+                                       seed=seed)
 
-    # go through each sampled non-edge and
-    # add it to the list already with edges
-    for edge in non_edges_to_add:
-        # get info from edge
-        citing_year = G.vs(edge[0])['year'][0]
-        cited_name = G.vs(edge[1])['name'][0]
+    fill_edgedata_list(edgedata_list, G, nonedges_to_add, year_interval,
+                       snapshots_dict, edges_exist=False)
 
-        # determine which vertex_df to retrieve
-        year = citing_year + (year_interval - citing_year % year_interval)
+    column_names = ['edge'] + \
+                   ['ing_name', 'ed_name', 'ing_year', 'ed_year', 'age'] + \
+                   ['age'] + \
+                   snapshots_dict.values()[0].columns.values.tolist()
 
-        # look-up that dataframe from given path
-        vertex_df = vertex_metric_dict[path_to_vertex_metrics_folder +
-                                       'vertex_metrics_' + str(year) + '.csv']
-
-        # get row from df using cited_name
-        row = vertex_df.loc[cited_name].values.tolist()
-
-        edge_tuple = (0,) + tuple(row)
-        edges_to_add_list.append(edge_tuple)
-
-    # get column names from the last loaded dataframe
-    # (since all df should have same column names)
-    column_names = ['edge'] + list(vertex_df.columns.values)
-    df = pd.DataFrame(edges_to_add_list, columns=column_names)
-
-    # columns of df are the vertex of cited case in citing case's year
-
+    df = pd.DataFrame(edgedata_list, columns=column_names)
     df.to_csv(experiment_data_dir + 'edge_data.csv')
 
 
-def sample_non_edges(G, year_interval, num_non_edges_to_add):
+def fill_edgedata_list(edgedata_list,
+                       G,
+                       edgelist_to_add,
+                       year_interval,
+                       snapshots_dict,
+                       edges_exist):
+    """
+    Modifies edges_to_add_list in place by appending edge rows
+    """
+
+    # are we adding existing edges or non-existant edges
+    if edges_exist:
+        class_label = 1
+    else:
+        class_label = 0
+
+    for edge in edgelist_to_add:
+
+        # grab igraph vertices
+        citing_vertex = G.vs(edge[0])
+        cited_vertex = G.vs(edge[1])
+
+        citing_year = citing_vertex['year'][0]
+
+        # determine which vertex_df to retrieve
+        ing_snapshot_year = citing_year + \
+                            (year_interval - citing_year % year_interval)
+
+        # get data from snapshot_dict
+        ing_snapshot_df = snapshots_dict['vertex_metrics_' +
+                                         str(ing_snapshot_year)]
+
+        edgedata_list.append(edge_data_row(citing_vertex,
+                                           cited_vertex, ing_snapshot_df))
+
+
+def sample_non_edges(G, year_interval, num_non_edges_to_add, seed=None):
     '''
     Samples a number of nonexistent edges from the network G
 
@@ -113,6 +89,10 @@ def sample_non_edges(G, year_interval, num_non_edges_to_add):
     --------
     List of non-present edges
     '''
+    # TODO: make seed work for ranomd package
+    if seed:
+        np.random.seed(seed) # set seed for random packakge!
+
     # set makes adding 'edge_tuple' unique in the while loop
     # (need b/c random sampling can return duplicates)
     non_edge_set = set([])

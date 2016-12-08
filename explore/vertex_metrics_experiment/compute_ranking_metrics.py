@@ -4,8 +4,13 @@ import random as random
 import pandas as pd
 
 
-def compute_ranking_metrics(G, LogReg, columns_to_use,
-                            experiment_data_dir, year_interval, R):
+def compute_ranking_metrics(G,
+                            LogReg,
+                            columns_to_use,
+                            experiment_data_dir,
+                            year_interval,
+                            R,
+                            seed=None):
     '''
     Computes the rank score metric for a given logistic regression object.
 
@@ -25,68 +30,96 @@ def compute_ranking_metrics(G, LogReg, columns_to_use,
 
     R: how many cases to compute ranking metrics for
 
+    seed: random seed for selecting cases whose ancsetry to score
+
     Output
     -------
     The average ranking score over all R cases we tested
     '''
 
+    if seed:
+        np.random.seed(seed)
+
     # select cases for sample
     vertices = set(G.vs)
     cases_to_test = random.sample(vertices, R)
 
-    cases_to_test_rank_scores = []
+    test_case_rank_scores = []
+    test_case_out_degrees = []
 
-    # load all the vertex metric dataframes into a dict so
-    # they only have to be read in once
-    path_to_vertex_metrics_folder = experiment_data_dir + 'snapshots/'
-    all_vertex_metrics_df = glob.glob(path_to_vertex_metrics_folder + "/vertex_metrics*.csv")
-
-    vertex_metric_dict = {}
-    for vertex_metrc_df in all_vertex_metrics_df:
-        # add df to dict with filepath as key
-        vertex_metric_dict[vertex_metrc_df] = pd.read_csv(vertex_metrc_df,
-                                                          index_col=0)
+    snapshots_dict = load_snapshots(experiment_data_dir)
 
     # calculate each case's score
-    for case in cases_to_test:
-
-        # determine which vertex_df to retrieve
-        year = case['year'] + (year_interval - case['year'] % year_interval)
-
-        # look-up that dataframe from given path
-        vertex_df = vertex_metric_dict[path_to_vertex_metrics_folder + 'vertex_metrics_' + str(year) + '.csv']
-
-        # create df that the logistical regression object will evaluate
-        x_test_df = vertex_df[columns_to_use]
-        attachment_p = get_attachment_probabilty(LogReg,
-                                                 x_test_df)
-
-        # add the attachment probabilities as column
-        vertex_df['attachment_p'] = attachment_p
-        # sort by attachment probabilities
-        vertex_df = vertex_df.sort_values('attachment_p',
-                                          ascending=False,
-                                          kind='mergesort')
-
+    for ing_case in cases_to_test:
         # get neighbors
-        neighbors = G.neighbors(case.index, mode='OUT')
+        actual_citations = G.neighbors(case.index, mode='OUT')
+        num_citations = len(actual_citations)
 
-        # rank and score neighbors using dataframe indices
-        scores = []  # list of scores for each vertex
-        for i in neighbors:
-            rank = vertex_df.index.get_loc(G.vs[i]['name']) + 1
-            score = 1-rank/len(attachment_p)
-            scores.append(score)
+        # only score cases who cite at least one case
+        if num_citations >= 1:
 
-        case_rank_score = sum(scores)  # sum up the scores for each case
+            # determine which vertex_df to retrieve
+            year = ing_case['year'] + (year_interval - ing_case['year'] % year_interval)
 
-        # add score to list of all cases' scores
-        cases_to_test_rank_scores.append(case_rank_score)
+            # look-up that dataframe from given path
+            ing_snapshot_df = snapshots_dict['vertex_metrics_' + str(year)]
 
-    return np.mean(cases_to_test_rank_scores)
+            # number of cases in this snapshot
+            num_cases = ing_snapshot_df.shape[0]
+
+            # create df that the logistical regression object will evaluate
+            x_test_df = make_test_data(G, ing_snapshot_df, ing_vertex, columns_to_use)
+
+            # probability a case is cited
+            citation_probs = get_attachment_probabilty_logreg(LogReg, x_test_df)
+
+            # sort by attachment probabilities
+            citation_probs.sort_values('citation_prob', ascending=False,
+                                       kind='mergesort', inplace=True)
 
 
-def get_attachment_probabilty(LogReg, x_test_df):
+            # keep track of how many citations case has
+            test_case_out_degrees.append(num_citations)
+
+            # rank and citaions
+            case_scores = []
+
+            for i in actual_citations:
+                rank_of_actual_citation = citation_probs.index.get_loc(G.vs[i]['name']) + 1.0
+                rank_score = get_rank_score(rank_of_actual_citation, num_cases)
+                case_scores.append(rank_score)
+
+            # average over all citations
+            avg_rank_score = np.mean(case_scores)
+
+            # add score to list of all cases' scores
+            test_case_rank_scores.append(avg_rank_score)
+
+    return test_case_rank_scores
+
+
+def make_test_data(G, ing_snapshot_df, ing_vertex, columns_to_use):
+    # TODO: probably not the right way to to this
+    # should copy over the ing_snapshot_df and then add columns
+    ed_case_ids = ing_snapshot_df.index
+
+    edgedata_list = []
+    for ed_case_id in ed_case_ids:
+        cited_vertex = G.vs.find('ed_case_id')
+        edgerow = edge_data_row(citing_vertex, cited_vertex, ing_snapshot_df)
+        edgedata_list.append()
+
+    column_names = ['edge'] + \
+                   ['ing_name', 'ed_name', 'ing_year', 'ed_year', 'age'] + \
+                   ['age'] + \
+                   snapshots_dict.values()[0].columns.values.tolist()
+
+    df = pd.DataFrame(edgedata_list, columns=column_names)
+
+    return df[columns_to_use]
+
+
+def get_attachment_probabilty_logreg(LogReg, X):
     '''
     Evaluates our logistic regression model for a given dataset.
 
@@ -95,20 +128,35 @@ def get_attachment_probabilty(LogReg, x_test_df):
     LogReg: a logistic regression object
     (i.e. the output of fit_logistic_regression)
 
-    x_test_df: columns of vertex_df used in evaluating the
+    X: columns of vertex_df used in evaluating the
     logistical regression
 
     Output
     ------
-    returns a list of attachment probabilities for the dataset
+    returns a list of df of attachment probabilities
     '''
+    # TODO: is class 0 citation or class 1??
 
-    # get attachment probabilities on testing set
-    prob = LogReg.predict_proba(x_test_df)
+    # create probability data frame
+    prob_df = pd.DataFrame(index=X.index)
 
-    # predicted probabilities for ALL case for edge present (1)
-    prob_present = prob[:, 1:2]
-    # convert to list
-    prob_present_list = [i.tolist()[0] for i in prob_present]
+    # which class??
+    citation_index = np.where(LogReg.classes_ == 1)[0]
+    prob_df['citation_prob'] = LogReg.predict_proba(X)[:, citation_index]  # should this be 0 or 1??
 
-    return prob_present_list
+    return prob_df
+
+
+def get_rank_score(position, number_of_items):
+    """
+    Computes the rank score (1 is good)
+
+    See Zanin et al. (pref attachemnt aging ...)
+
+    Parameters
+    ----------
+    position: where the item is ranked
+
+    number_of_items: how many items were ranked
+    """
+    return 1.0 - float(position) / number_of_items

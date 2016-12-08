@@ -1,6 +1,9 @@
 
 from __future__ import division
 import pandas as pd
+from pipeline_helper_functions import *
+import numpy as np
+import re
 
 
 def get_snapshot_vertex_metrics(G, years, vertex_metrics, experiment_data_dir):
@@ -31,6 +34,7 @@ def get_snapshot_vertex_metrics(G, years, vertex_metrics, experiment_data_dir):
         # creates dataframe using 'name' attribute as index because
         # it is consistent throughout all truncations of the network
         df_T = pd.DataFrame(index=G_T.vs['name'])
+        df_T.index.name = 'CLid'
         df_T['year'] = G_T.vs['year']
 
         # add column for each metric
@@ -39,7 +43,7 @@ def get_snapshot_vertex_metrics(G, years, vertex_metrics, experiment_data_dir):
 
         file_path = experiment_data_dir + 'snapshots/vertex_metrics_' \
                                         + str(T) + '.csv'
-        df_T.to_csv(file_path)
+        df_T.to_csv(file_path, index=True)
 
 
 def get_network_at_time(G, T):
@@ -90,3 +94,35 @@ def create_metric_column(G_T, metric):
         return
 
     return metric_column
+
+
+def run_transform_snaphots(experiment_data_dir):
+    """
+    Transforms the raw snapshot data frames into training data
+    """
+    snapshots_dict = load_snapshots(experiment_data_dir, train=False)
+
+    train_path = experiment_data_dir + 'snapshots_train/'
+
+    for snap in snapshots_dict.keys():
+        snapshot_year = int(re.findall(r'\d+', snap)[0])
+        snap_train = transform_snaphots(snapshot_df=snapshots_dict[snap],
+                                        snapshot_year=snapshot_year)
+        snap_train.to_csv(train_path + snap + '.csv',
+                          index=True)
+
+
+def transform_snaphots(snapshot_df, snapshot_year):
+    """
+    Workhorse function for making transforming raw snapshots
+    """
+    train_df = pd.DataFrame(index=snapshot_df.index)
+    train_df.index.name = 'CLid'
+
+    train_df['indegree'] = snapshot_df['indegree']
+
+    train_df['l_pagerank'] = np.log(snapshot_df['pagerank'])
+
+    train_df['age'] = snapshot_year - snapshot_df['year']
+
+    return train_df
