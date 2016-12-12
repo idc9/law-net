@@ -158,7 +158,7 @@ def case_info(case_id):
     print
 
 
-def load_and_clean_graph(data_dir, court_name):
+def load_and_clean_graph(data_dir, court_name, ):
     """
     Kills edges going the wrong way in time
 
@@ -166,23 +166,28 @@ def load_and_clean_graph(data_dir, court_name):
     ------
     igraph object
     """
-    G = load_citation_network_igraph(data_dir, court_name)
-    all_edges = G.get_edgelist()  # list of tuples
-    bad_edges = []
-    for edge in all_edges:
-        citing_year = G.vs(edge[0])['year'][0]
-        cited_year = G.vs(edge[1])['year'][0]
+    graph_path = path = data_dir + 'clean/' + court_name + \
+                        '/' + court_name + '.GraphML'
+    if os.path.isfile(graph_path):
+        G = ig.Graph.Read_GraphML(graph_path)
+    else:
+        G = load_citation_network_igraph(data_dir, court_name)
+        all_edges = G.get_edgelist()  # list of tuples
+        bad_edges = []
+        for edge in all_edges:
+            citing_year = G.vs(edge[0])['year'][0]
+            cited_year = G.vs(edge[1])['year'][0]
 
-        if citing_year < cited_year:
-            bad_edges.append(edge)
+            if citing_year < cited_year:
+                bad_edges.append(edge)
 
-    G.delete_edges(bad_edges)
+        G.delete_edges(bad_edges)
 
-    # make name a string
-    G.vs['name'] = [str(n) for n in G.vs['name']]
+        # make name a string
+        G.vs['name'] = [str(n) for n in G.vs['name']]
 
-    # kill detroit lumber case
-    detroit_case = G.vs.find('96405')
-    G.delete_vertices(detroit_case)
+        # kill detroit lumber case
+        detroit_case = G.vs.find('96405')
+        G.delete_vertices(detroit_case)
 
     return G

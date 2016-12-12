@@ -7,19 +7,20 @@ from scipy.stats import gaussian_kde
 
 
 def print_describe(values):
-    des = stats.describe(values)
-    print 'nobs: %d' % stats.describe(values).nobs
-    print 'mean: %1.2f' % stats.describe(values).mean
-    print 'median: %1.2f' % np.median(values)
-    print 'min: %1.2f' % stats.describe(values).minmax[0]
-    print 'max: %1.2f' % stats.describe(values).minmax[1]
-    print 'variance: %1.2f' % stats.describe(values).variance
+    print 'nobs: %d' % len(values)
+    print 'mean: %1.3f' % np.mean(values)
+    print 'median: %1.3f' % np.median(values)
+    print 'min: %1.3f' % min(values)
+    print 'max: %1.3f' % max(values)
+    print 'std: %1.3f' % np.std(values)
     print 'unique values %d' % len(set(values))
 
 
-def plot_scores(scores, palette=None,
-                start=1, n_comp=3, classes=None,
-                title=''):
+def plot_scores(scores,
+                start=1,
+                n_comp=3,
+                title='',
+                labels=None):
     """
     Plots the scores plots of a data frame where the rows are observations and
     the columns are featurs
@@ -28,79 +29,72 @@ def plot_scores(scores, palette=None,
 
     """
     # TODO: add overall title
+
+    if type(scores) == pd.core.frame.DataFrame:
+        labels = scores.columns.tolist()
+        scores = scores.as_matrix()
+
+    if labels is None or len(labels) < n_comp:
+        lables = ['comp %d' % j for j in range(1, n_comp + 1)]
+
     start -= 1  # zero indexing
 
-    if not palette:
-        ptcolor = 'black'
-    else:
-        ptcolor = palette
-
     plt.figure(figsize=[5 * n_comp, 5 * n_comp])
+    plt.title(title)
     p = 1
     for i in range(start, start + n_comp):
         for j in range(start, start + n_comp):
             if i == j:
                 plt.subplot(n_comp, n_comp, p)
                 # plt.hist(U[i, :])
-                plot_jitter_hist(scores[:, i],
-                                 palette=palette, classes=classes)
-                plt.ylabel('comp %d' % (j + 1))
+                plot_jitter_hist(scores[:, i])
+                plt.ylabel(labels[j])
             elif i < j:
                 plt.subplot(n_comp, n_comp, p)
-                plt.scatter(scores[:, j], scores[:, i],
-                            color=ptcolor, alpha=.8)
-                plt.xlabel('comp %d' % (j + 1))
-                plt.ylabel('comp %d' % (i + 1))
+                plt.scatter(scores[:, j], scores[:, i], alpha=.8)
+                plt.xlabel(labels[j])
+                plt.ylabel(labels[i])
+
+                if i == 0 and j == 1:
+                    plt.title(title)
 
             p += 1
 
 
-def plot_jitter_hist(y, palette=None, classes=None):
+def plot_jitter_hist(y, n_bins=10, xlabel='', title=''):
     """
     Jitter plot histogram
     """
     n = len(y)
-    if not palette:
-        palette = ['red'] * n
-
-    if classes and (set(classes) != set([0, 1])):
-        raise ValueError('classes vector not in proper format')
 
     # plot the histogram of the points
-    hist = plt.hist(y, alpha=.6, color='black')
+    bins = np.linspace(min(y), max(y), n_bins)
+    hist = plt.hist(y, bins=bins, alpha=.8, color='blue')
     counts, bins = hist[0], hist[1]
 
     # show each individual point using a jitter plot
-    jitter_y = np.percentile(counts, .25)
-    plt.scatter(y, np.random.uniform(0, 1, n) + jitter_y,
-                color=palette, zorder=2)
+    jitter_y = max(counts) * .1
+    jitter_spread = max(counts) * .01
+    jitters = np.random.uniform(low=-jitter_spread,
+                                high=jitter_spread, size=n) + jitter_y
+    plt.scatter(y, jitters,
+                color='red', alpha=.7, zorder=2)
 
     plt.xlim([min(bins), max(bins)])
     plt.ylim([0, max(counts)])
 
-    if classes:
-        # grab points in each class
-        y0 = [y[i] for i in range(n) if classes[i] == 0]
-        y1 = [y[i] for i in range(n) if classes[i] == 1]
+    plt.xlabel(xlabel)
+    plt.title(title)
 
-        # points where we evaluate the pdf of the kde
-        p = np.linspace(min(bins), max(bins), 1000)
+    # # points where we evaluate the pdf of the kde
+    # p = np.linspace(min(bins), max(bins), 1000)
+    #
+    # # get guassian KDE of individual classes
+    # y_kde = gaussian_kde(y0, bw_method='scott').pdf(p)
+    #
+    # # plot the class specific kdf pdfs
+    # plt.plot(p, y_kde, color='blue')
 
-        # get guassian KDE of individual classes
-        y0_kde = gaussian_kde(y0, bw_method='scott').pdf(p)
-        y1_kde = gaussian_kde(y1, bw_method='scott').pdf(p)
-
-        # rescale kde so that is height is displayed on the counts scale
-        # * len(y0) / (len(y0) + len(y1)) # could scale by class sizes
-        # * len(y1) / (len(y0) + len(y1))
-        scale0 = (max(counts) / max(y0_kde)) * .75
-        scale1 = (max(counts) / max(y1_kde)) * .75
-        y0_kde_s = [v * scale0 for v in y0_kde]
-        y1_kde_s = [v * scale1 for v in y1_kde]
-
-        # plot the class specific kdf pdfs
-        plt.plot(p, y0_kde_s, color='blue')
-        plt.plot(p, y1_kde_s, color='red')
 
 
 def plot_pairwise_scatter(X, Y):
@@ -200,7 +194,7 @@ def plot_individual_loadings(start, n_comp, V):
 
         # soreted loadings
         plt.subplot(n_comp, 2, k)
-        v = np.matrix(V)[:, i - 1].A1
+        v = np.matrix(V)[i - 1, :].A1
         v.sort()
 
         plt.scatter(range(len(v)), v,
@@ -244,7 +238,7 @@ def plot_K_loadings(V, K):
     # unsorted
     plt.subplot(1, 2, 1)
     for i in range(K):
-        v = np.matrix(V)[:, i].A1
+        v = np.matrix(V)[i, :].A1
         plt.plot(range(len(v)), v,
                  color='black',
                  alpha=.2)
@@ -267,3 +261,84 @@ def plot_K_loadings(V, K):
     plt.xlim([0, len(v)])
     plt.ylabel('value')
     plt.title('sorted first %d pricipal directions' % K)
+
+
+def plot_2class_scores(scores, classes, start=0, n_comp=3):
+    """
+    creates scores plot with two classes
+    """
+    clA_label = list(set(classes))[0]
+    clB_label = list(set(classes))[1]
+
+    palette = class_pallette = ['blue' if c == clA_label
+                                else 'red' for c in classes]
+
+    plt.figure(figsize=[5 * n_comp, 5 * n_comp])
+    p = 1
+    for i in range(start, start + n_comp):
+        for j in range(start, start + n_comp):
+            if i == j:
+                plt.subplot(n_comp, n_comp, p)
+                plot_2class_hist(scores[:, i], classes,
+                                 legend=(p == 1),
+                                 xlabel='comp %d' % (j + 1))
+
+            elif i < j:
+                plt.subplot(n_comp, n_comp, p)
+                plt.scatter(scores[:, j], scores[:, i],
+                            color=palette, alpha=.8)
+                plt.xlabel('comp %d' % (j + 1))
+                plt.ylabel('comp %d' % (i + 1))
+            p += 1
+
+
+def plot_2class_hist(X, classes, legend=True, xlabel=''):
+
+    clA_label = list(set(classes))[0]
+    clB_label = list(set(classes))[1]
+
+    palette = class_pallette = ['blue' if c == clA_label
+                                else 'red' for c in classes]
+
+    # plot the histogram of the points
+    hist = plt.hist(X, alpha=.6, color='black')
+    counts, bins = hist[0], hist[1]
+
+    # show each individual point using a jitter plot
+    jitter_y = np.percentile(counts, .25)
+    plt.scatter(X, np.random.uniform(0, 1, len(X)) + jitter_y,
+                color=palette, zorder=2)
+
+    plt.xlim([min(bins), max(bins)])
+    plt.ylim([0, max(counts)])
+    plt.y
+
+    # grab points in each class
+    Xa = [X[k] for k in range(len(X)) if classes[k] == clA_label]
+    Xb = [X[k] for k in range(len(X)) if classes[k] == clB_label]
+
+    # points where we evaluate the pdf of the kde
+    pts = np.linspace(min(bins), max(bins), 1000)
+
+    # get guassian KDE of individual classes
+    Xa_kde = gaussian_kde(Xa, bw_method='scott').pdf(pts)
+    Xb_kde = gaussian_kde(Xb, bw_method='scott').pdf(pts)
+
+    # rescale kde so that is height is displayed on the countsscale
+    # * len(y0) / (len(y0) + len(y1)) # could scale by class sizes
+    # * len(y1) / (len(y0) + len(y1))
+    scale0 = (max(counts) / max(Xa_kde)) * .75
+    scale1 = (max(counts) / max(Xb_kde)) * .75
+    Xa_kde_s = [v * scale0 for v in Xa_kde]
+    Xb_kde_s = [v * scale1 for v in Xb_kde]
+
+    # plot the class specific kdf pdfs
+    plt.plot(pts, Xa_kde_s, color='blue', label=clA_label)
+    plt.plot(pts, Xb_kde_s, color='red', label=clB_label)
+
+    if legend:
+        plt.legend(loc='upper right')
+
+
+def get_jitter(N, base, width):
+    return base + np.random.uniform(low=-width, high=width, size=N)

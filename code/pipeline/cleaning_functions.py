@@ -32,25 +32,25 @@ def get_cert_cases_scotus(data_dir, remove=False):
         download_bulk_resource(court_name, 'opinions', data_dir)
 
     # grab all scotus cases
-    case_meatadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
+    case_metadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
                                  index_col='id')
 
-    case_meatadata = case_meatadata[case_meatadata.court == 'scotus']
-    case_meatadata['date'] = pd.to_datetime(case_meatadata['date'])
+    case_metadata = case_metadata[case_metadata.court == 'scotus']
+    case_metadata['date'] = pd.to_datetime(case_metadata['date'])
 
-    case_ids = set(case_meatadata.index)
+    case_ids = set(case_metadata.index)
 
     # grab scotus-scotus edges
     edgelist = pd.read_csv(data_dir + 'raw/edgelist_master_r.csv')
     edgelist = edgelist[edgelist.citing.isin(case_ids) & edgelist.cited.isin(case_ids)]
 
     # build the scotus network
-    G = get_network(case_meatadata, edgelist)
+    G = get_network(case_metadata, edgelist)
     degrees = G.degree()
 
     # find zero degree cases that contain the words: 'denied' or 'certiorari'
-    case_meatadata['cert_case'] = False
-    for case, _ in case_meatadata.iterrows():
+    case_metadata['cert_case'] = False
+    for case, _ in case_metadata.iterrows():
         op_path = op_dir + str(case) + '.json'
         if os.path.isfile(op_path):
             if degrees[case] == 0:
@@ -60,7 +60,7 @@ def get_cert_cases_scotus(data_dir, remove=False):
                     value = opinion[key]
                     if type(value) is unicode:
                         if 'denied' in value or 'certiorari' in value:
-                            case_meatadata.loc[case, 'cert_case'] = True
+                            case_metadata.loc[case, 'cert_case'] = True
         else:
             print 'warning no opinion file for for case %d' % case
 
@@ -71,22 +71,22 @@ def get_cert_cases_scotus(data_dir, remove=False):
 
         os.rmdir(op_dir)
 
-    return case_meatadata[case_meatadata['cert_case']].index.tolist()
+    return case_metadata[case_metadata['cert_case']].index.tolist()
 
 
 def find_time_travelers(data_dir):
     """
     Some edges cite forwards in time...
     """
-    case_meatadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
+    case_metadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
                                  index_col='id')
 
     edgelist = pd.read_csv(data_dir + 'raw/edgelist_master_r.csv')
     # some edges travel forwards in time
     edgelist['timetravel'] = False
     for index, edge in edgelist.iterrows():
-        ing_date = case_meatadata.loc[edge['citing'], 'date']
-        ed_date = case_meatadata.loc[edge['cited'], 'date']
+        ing_date = case_metadata.loc[edge['citing'], 'date']
+        ed_date = case_metadata.loc[edge['cited'], 'date']
 
         if ing_date < ed_date:
             edgelist.loc[index, 'timetravel'] = True
