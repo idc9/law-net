@@ -6,7 +6,7 @@ import numpy as np
 import re
 
 
-def make_snapshot_vertex_metrics(G, snapshot_year_list, vertex_metrics,
+def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
                                  experiment_data_dir):
     """
     Creates the data frames with vertex metics in given years
@@ -26,9 +26,11 @@ def make_snapshot_vertex_metrics(G, snapshot_year_list, vertex_metrics,
     --------
     writes csv files of the vertex metric data frame for each year in years
     """
+    # include year before min active year
+    active_years.append(min(active_years) - 1)
 
     # create a vertex df for each year T
-    for T in snapshot_year_list:
+    for T in active_years:
         # get subgraph at particular time
         G_T = get_network_at_time(G, T)
 

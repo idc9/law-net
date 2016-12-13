@@ -12,7 +12,7 @@ def compute_ranking_metrics_LR(G,
                                LogReg,
                                columns_to_use,
                                experiment_data_dir,
-                               snapshot_year_list,
+                               active_years,
                                R,
                                year_floor=1900,
                                seed=None):
@@ -53,7 +53,8 @@ def compute_ranking_metrics_LR(G,
         random.seed(seed)
 
     # select cases for sample
-    vertices = set(G.vs.select(year_ge=1900))
+    possible_citing_cases = set(G.vs.select(year_ge=min(active_years),
+                                            year_le=max(active_years)))
 
     # ranking scores for each test case
     test_case_rank_scores = []
@@ -77,13 +78,18 @@ def compute_ranking_metrics_LR(G,
     while(len(test_case_rank_scores) < R):
 
         # randomly select a case
-        test_case = random.sample(vertices, 1)[0]
+        test_case = random.sample(possible_citing_cases, 1)[0]
 
         # test case citing year
         ing_year = test_case['year']
 
-        # get neighbors first as ig index then convert to CLid
+        # get neighbors first as ig index
         actual_citations = G.neighbors(test_case.index, mode='OUT')
+
+        # only keep cited cases coming in years strictly before citing year
+        citations_before = [ig_id for ig_id in actual_citations if G.vs['year'] < ing_year]
+
+        # converted ig index to CL id
         cited_CLids = [int(G.vs[ig_id]['name']) for ig_id in actual_citations]
         num_citations = len(cited_CLids)
 
@@ -91,16 +97,18 @@ def compute_ranking_metrics_LR(G,
         if num_citations >= 1:
             test_cases.append(test_case['name'])
 
-            # determine which vertex_df to retrieve
-            snapshot_year = get_snapshot_year(ing_year,
-                                              snapshot_year_list)
+            # get vetex metrics in year before citing year
+            snapshot_year = ing_year - 1
+            snapshot_year = get_snapshot_year(snapshot_year,
+                                              active_years)
 
             # grab data frame of vertex metrics for test case's snapshot
             snapshot_df = snapshots_dict['vertex_metrics_' +
                                          str(snapshot_year)]
 
-            # restrict ourselves to ancestors of ing case
-            ancentors = [v.index for v in G.vs.select(year_le=ing_year)]
+            # restrict ourselves to ancestors of ing
+            # case strictly before ing year
+            ancentors = [v.index for v in G.vs.select(year_le=ing_year - 1)]
             num_ancentors = len(ancentors)
 
             # all edges from ing case to previous cases

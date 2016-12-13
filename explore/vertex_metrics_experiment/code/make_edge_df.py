@@ -9,7 +9,7 @@ from similarity_matrix import *
 from get_edge_data import *
 
 
-def make_edge_df(G, experiment_data_dir, snapshot_year_list,
+def make_edge_df(G, experiment_data_dir, active_years,
                  num_non_edges_to_add, columns_to_use, seed=None):
     """
     Creates the edge data frame
@@ -20,7 +20,7 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
 
     experiment_data_dir:
 
-    snapshot_year_list:
+    active_years:
 
     num_non_edges_to_add:
 
@@ -47,40 +47,46 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
     edge_data = pd.DataFrame(columns=colnames)
 
     # get all present edges
-    present_edgelist = G.get_edgelist()
+    present_edgelist = get_present_edges(G, active_years)
 
     # organize edges by ing snapshot year
     edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, present_edgelist,
-                                                         snapshot_year_list)
+                                                         active_years)
 
     # add present edge data
-    for sn_year in snapshot_year_list:
+    for year in active_years:
+        snapshot_year = year - 1
+
         # vertex metrcs in snapshot year
-        snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
+        snapshot_df = snapshots_dict['vertex_metrics_' + str(snapshot_year)]
 
         # edges to add whose ing year is in the snapshot year
-        edges = edges_by_snap_year_dict[sn_year]
+        edges = edges_by_snap_year_dict[snapshot_year]
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
                                      similarity_matrix, CLid_to_index,
                                      edge_status='present')
+
         edge_data = edge_data.append(sn_edge_data)
 
     # get a sample of non-present edges
-    absent_edgelist = sample_non_edges(G, num_non_edges_to_add, seed=seed)
+    absent_edgelist = sample_absent_edges(G, num_non_edges_to_add,
+                                          active_years, seed=seed)
 
     # organize edges by ing snapshot year
     edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, absent_edgelist,
-                                                         snapshot_year_list)
+                                                         active_years)
 
     # add absent edge data
-    for sn_year in snapshot_year_list:
+    for year in active_years:
+        snapshot_year = year - 1
+
         # vertex metrcs in snapshot year
-        snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
+        snapshot_df = snapshots_dict['vertex_metrics_' + str(snapshot_year)]
 
         # edges to add whos ing year is in the snapshot year
-        edges = edges_by_snap_year_dict[sn_year]
+        edges = edges_by_snap_year_dict[snapshot_year]
 
         # get edge data frame for snapshot year
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
@@ -92,7 +98,7 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
     edge_data.to_csv(experiment_data_dir + 'edge_data.csv')
 
 
-def update_edge_df(G, experiment_data_dir, snapshot_year_list, columns_to_add):
+def update_edge_df(G, experiment_data_dir, active_years, columns_to_add):
     """
     Adds new columns to edge_data frame
     """
@@ -122,13 +128,13 @@ def update_edge_df(G, experiment_data_dir, snapshot_year_list, columns_to_add):
 
     # organize edges by ing snapshot year
     edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, edgelist,
-                                                         snapshot_year_list)
+                                                         active_years)
 
     # initialize temp dataframe
     edge_data_to_add = pd.DataFrame(columns=columns_to_add)
 
     # add present edge data
-    for sn_year in snapshot_year_list:
+    for sn_year in active_years:
         # vertex metrcs in snapshot year
         snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
 
@@ -163,71 +169,105 @@ def CLid_edge_to_IGid(G, edge):
     return G.vs.find(name_eq=edge[0]).index, G.vs.find(name_eq=edge[1]).index
 
 
-def get_edges_by_snapshot_dict(G, edgelist, snapshot_year_list):
+def get_edges_by_snapshot_dict(G, edgelist, active_years):
     """
-    Organizes edges by ing snapshot year
+    Organizes edges by ing snapshot year (year before citing year)
 
     list is igraph indices
     """
     num_edges = len(edgelist)
 
     # get the citing year of each edge
-    ing_years = [G.vs[edge[0]]['year'] for edge in edgelist]
-
-    # map the citing year to the snapshot year
-    snap_ing_years = [get_snapshot_year(y, snapshot_year_list)
-                      for y in ing_years]
+    snap_years = [G.vs[edge[0]]['year'] - 1 for edge in edgelist]
 
     # dict that organizes edges by ing snapshot year
-    edges_by_ing_snap_year_dict = {y: [] for y in snapshot_year_list}
+    edges_by_ing_snap_year_dict = {y-1: [] for y in active_years}
     for i in range(num_edges):
-        sn_year = snap_ing_years[i]
-        edge = edgelist[i]
-
-        edges_by_ing_snap_year_dict[sn_year].append(edge)
+        edges_by_ing_snap_year_dict[snap_years[i]].append(edgelist[i])
 
     return edges_by_ing_snap_year_dict
 
 
-def sample_non_edges(G, num_non_edges_to_add, seed=None):
+def sample_absent_edges(G, num_samples, active_years, seed=None):
     '''
     Samples a number of nonexistent edges from the network G
+
+    - citing year must be within active year range
+    - cited year must be less than citing year - 1
 
     Parameters
     ----------
     G: network
 
-    year_interval: the year interval between each vertex metric .csv file
+    num_samples: number of desired samplese
 
-    num_non_edges_to_add: how many nonexistent edges to add
+    active_years: the allowed years for ing cases
+
+    seed: sampling seed
 
     Output
     --------
-    List of non-present edges (igraph indices)
+    List of absent edges (igraph indices)
     '''
-    # TODO: possibly speed this up
     if seed:
         random.seed(seed)
 
-    # set makes adding 'edge_tuple' unique in the while loop
-    # (need b/c random sampling can return duplicates)
-    non_edge_set = set([])
-    edges = set(G.get_edgelist())  # set faster than list for searching
-    vertices = set(G.vs)  # vertices to select from
+    # samples to return
+    samples = set()
 
-    while len(non_edge_set) < num_non_edges_to_add:
-        # get random_edge
-        temp = random.sample(vertices, 2)  # default: without replacement
-        random_edge = (temp[0].index, temp[1].index)
+    # edges currently in graph
+    present_edges = set(G.get_edgelist())
 
-        # get info from edge
-        citing_year = G.vs(random_edge[0])['year'][0]
-        cited_year = G.vs(random_edge[1])['year'][0]
+    # vertices to sample from
+    vertices = set(G.vs.select(year_le=max(active_years)))
 
-        # only add a random edge if the citing year is after the cited year,
-        # if it is not a present edge, and if it is not already sampled
-        if random_edge not in edges and citing_year >= cited_year and random_edge not in non_edge_set:
-            # determine which vertex_df to retrieve
-            non_edge_set.add(random_edge)
+    # ing_year should be in (min, max) of active_years
+    min_ing_year = min(active_years)
 
-    return list(non_edge_set)
+    # run until we get enough samples
+    while len(samples) < num_samples:
+        # sample a pair of vertices
+        pair = random.sample(vertices, 2)  # default: without replacement
+
+        year0 = G.vs(pair[0].index)['year'][0]
+        year1 = G.vs(pair[1].index)['year'][0]
+
+        # if years are the same or neither of the years are
+        # above the min active year
+        if (year0 != year1) and (min_ing_year < year0 or min_ing_year < year1):
+
+            # the larger year is the citing year
+            if year0 < year1:
+                random_edge = (pair[1].index, pair[0].index)
+            else:
+                random_edge = (pair[0].index, pair[1].index)
+
+            # make sure edge is absent and that we haven't already added it
+            if random_edge not in present_edges and random_edge not in samples:
+                samples.add(random_edge)
+
+    return list(samples)
+
+
+def get_present_edges(G, active_years):
+    """
+    Returns all edges in graph satisfying
+    - citing year withing ing_years range
+    - cited year < citing year
+
+    Parameters
+    ---------
+    G: igraph object
+
+    active_years: range of allowable citing years
+
+    Output
+    -------
+    list of edge tuples (igraph indices)
+    """
+    min_year = min(active_years)
+    max_year = max(active_years)
+
+    return [(e.source, e.target) for e in G.es
+            if (min_year <= G.vs[e.source]['year'] <= max_year) and
+               (G.vs[e.target]['year'] < G.vs[e.source]['year'])]

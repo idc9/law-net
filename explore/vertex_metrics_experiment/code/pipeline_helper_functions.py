@@ -31,11 +31,11 @@ def load_snapshots(experiment_data_dir):
     return snapshots_dict
 
 
-def get_snapshot_year(ing_year, snapshot_year_list):
+def get_snapshot_year(ing_year, active_years):
     """
     Returns the smallest year greater than ing year
     """
-    return min([y for y in snapshot_year_list if ing_year <= y])
+    return min([y for y in active_years if ing_year <= y])
 
 
 def edge_is_present(G, source, target):
