@@ -1,6 +1,7 @@
 import glob
 import pandas as pd
 import numpy as np
+from scipy.sparse import csr_matrix
 
 
 def load_snapshots(experiment_data_dir):
@@ -37,65 +38,6 @@ def get_snapshot_year(ing_year, snapshot_year_list):
     return min([y for y in snapshot_year_list if ing_year <= y])
 
 
-def get_edge_data(G, edgelist, snapshot_df, columns_to_use, similarity_matrix,
-                  edge_status=None):
-    """
-    Returns a data frame for all edges from given edge list
-    """
-
-    num_edges = len(edgelist)
-
-    # CL ids of ed cases (indexes the snap_df rows)
-    ed_CLids = [int(G.vs[edge[1]]['name']) for edge in edgelist]
-    ing_CLids = [int(G.vs[edge[0]]['name']) for edge in edgelist]
-
-    # ages
-    ed_year = np.array([G.vs[edge[1]]['year'] for edge in edgelist])
-    ing_year = np.array([G.vs[edge[0]]['year'] for edge in edgelist])
-
-    # get case similarities
-    similarities = [0] * num_edges
-    for i in range(num_edges):
-        # similarities[i] = similarity_matrix.ix[ing_CLids[i], ed_CLids[i]]
-        similarities[i] = 0
-
-    # ed metrics in ing year
-    ed_metrics = snapshot_df.loc[ed_CLids]
-
-    # initialize edge data frame
-    edge_data = pd.DataFrame()
-
-    # add columns to edge data frame
-    for metric in columns_to_use:
-        if metric in ed_metrics.columns:
-            edge_data[metric] = ed_metrics[metric].tolist()
-        elif metric == 'age':
-            edge_data[metric] = ing_year - ed_year
-        elif metric == 'decayed_indegree':
-            halflife = 10
-            edge_data[metric] = 2.0 ** ((ing_year - ed_year)/halflife) * edge_data['indegree']
-        elif metric == 'similarity':
-            edge_data[metric] = similarities
-
-    # add edge status
-    if edge_status is not None:
-        if edge_status == 'present':
-            is_edge = [1] * num_edges
-        elif edge_status == 'absent':
-            is_edge = [0] * num_edges
-        elif edge_status == 'find':
-            # look up edge status
-            is_edge = [int(edge_is_present(G, e[0], e[1])) for e in edgelist]
-
-        edge_data['is_edge'] = is_edge
-
-    edge_data.index = [str(ing_CLids[i]) + '_' + str(ed_CLids[i])
-                       for i in range(num_edges)]
-    edge_data.index.name = 'CLids'
-
-    return edge_data
-
-
 def edge_is_present(G, source, target):
     """
     Returns true of there is an edge from source to target
@@ -127,3 +69,21 @@ def standardize(X, center=False, scale=False):
         sigma = np.std(X)
 
     return (X - mu)/sigma
+
+
+def save_sparse_csr(filename, array):
+    """
+    saves a sparse CSR matrix
+    from http://stackoverflow.com/questions/8955448/save-load-scipy-sparse-csr-matrix-in-portable-data-format
+    """
+    np.savez(filename, data=array.data, indices=array.indices,
+             indptr=array.indptr, shape=array.shape)
+
+
+def load_sparse_csr(filename):
+    """
+    Loads a saved CSR matrix
+    """
+    loader = np.load(filename)
+    return csr_matrix((loader['data'], loader['indices'], loader['indptr']),
+                      shape=loader['shape'])

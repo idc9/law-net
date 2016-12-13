@@ -2,21 +2,44 @@ from __future__ import division
 import pandas as pd
 import random as random
 import copy
+import os
 
 from pipeline_helper_functions import *
+from similarity_matrix import *
+from get_edge_data import *
 
 
 def make_edge_df(G, experiment_data_dir, snapshot_year_list,
                  num_non_edges_to_add, columns_to_use, seed=None):
+    """
+    Creates the edge data frame
 
+    Parameters
+    ----------
+    G:
+
+    experiment_data_dir:
+
+    snapshot_year_list:
+
+    num_non_edges_to_add:
+
+    columns_to_use:
+
+    seed:
+    """
     # load snapshot dataframes
     snapshots_dict = load_snapshots(experiment_data_dir)
 
     if len(snapshots_dict) == 0:
         raise ValueError('failed ot load snapshots train')
 
-    # similarity_matrix = pd.read_csv(experiment_data_dir + 'similarity_matrix.csv', index_col=0)
-    similarity_matrix = 0
+    # mabye load the similarities
+    if 'similarity' in columns_to_use:
+        similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
+    else:
+        similarity_matrix = None
+        CLid_to_index = None
 
     # initialize edge data frame
     colnames = copy.deepcopy(columns_to_use)
@@ -40,7 +63,8 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
-                                     similarity_matrix, edge_status='present')
+                                     similarity_matrix, CLid_to_index,
+                                     edge_status='present')
         edge_data = edge_data.append(sn_edge_data)
 
     # get a sample of non-present edges
@@ -60,18 +84,91 @@ def make_edge_df(G, experiment_data_dir, snapshot_year_list,
 
         # get edge data frame for snapshot year
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
-                                     similarity_matrix, edge_status='absent')
+                                     similarity_matrix, CLid_to_index,
+                                     edge_status='absent')
+
         edge_data = edge_data.append(sn_edge_data)
 
     edge_data.to_csv(experiment_data_dir + 'edge_data.csv')
+
+
+def update_edge_df(G, experiment_data_dir, snapshot_year_list, columns_to_add):
+    """
+    Adds new columns to edge_data frame
+    """
+    # load snapshot dataframes
+    snapshots_dict = load_snapshots(experiment_data_dir)
+
+    if len(snapshots_dict) == 0:
+        raise ValueError('failed ot load snapshots train')
+
+    # load edge data frame
+    edge_data_path = experiment_data_dir + 'edge_data.csv'
+    if os.path.exists(edge_data_path):
+        edge_data = pd.read_csv(edge_data_path, index_col=0)
+    else:
+        raise ValueError('cant find edge data')
+
+    # mabye load the similarities
+    if 'similarity' in columns_to_add:
+        similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
+    else:
+        similarity_matrix = None
+        CLid_to_index = None
+
+    # get edges that are in edge_data then convert them to igraph indices
+    edgelist_CLid = [get_edges_from_str(e) for e in edge_data.index]
+    edgelist = [CLid_edge_to_IGid(G, e) for e in edgelist_CLid]
+
+    # organize edges by ing snapshot year
+    edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, edgelist,
+                                                         snapshot_year_list)
+
+    # initialize temp dataframe
+    edge_data_to_add = pd.DataFrame(columns=columns_to_add)
+
+    # add present edge data
+    for sn_year in snapshot_year_list:
+        # vertex metrcs in snapshot year
+        snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
+
+        # edges to add whose ing year is in the snapshot year
+        edges = edges_by_snap_year_dict[sn_year]
+
+        # get snapshot year edge data frame
+        sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_add,
+                                     similarity_matrix, CLid_to_index)
+        edge_data_to_add = edge_data_to_add.append(sn_edge_data)
+
+    # add new columns
+    edge_data[colums_to_add] = edge_data_to_add
+
+    # save updated edge dataframe
+    edge_data.to_csv(edge_data_path)
+
+
+def get_edges_from_str(s):
+    """
+    Helper function for update_edge_df(). Converts string representation of
+    an edge to a tuple
+    """
+    split = s.split('_')
+    return split[0], split[1]
+
+
+def CLid_edge_to_IGid(G, edge):
+    """
+    Returns the igraph indices for an edge from their CL ids
+    """
+    return G.vs.find(name_eq=edge[0]).index, G.vs.find(name_eq=edge[1]).index
 
 
 def get_edges_by_snapshot_dict(G, edgelist, snapshot_year_list):
     """
     Organizes edges by ing snapshot year
 
+    list is igraph indices
     """
-
     num_edges = len(edgelist)
 
     # get the citing year of each edge
@@ -106,7 +203,7 @@ def sample_non_edges(G, num_non_edges_to_add, seed=None):
 
     Output
     --------
-    List of non-present edges
+    List of non-present edges (igraph indices)
     '''
     # TODO: possibly speed this up
     if seed:

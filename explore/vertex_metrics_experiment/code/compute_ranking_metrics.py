@@ -4,6 +4,8 @@ import random as random
 import pandas as pd
 
 from pipeline_helper_functions import *
+from similarity_matrix import *
+from get_edge_data import *
 
 
 def compute_ranking_metrics_LR(G,
@@ -64,8 +66,12 @@ def compute_ranking_metrics_LR(G,
     # load snapshots
     snapshots_dict = load_snapshots(experiment_data_dir)
 
-    # similarity_matrix = pd.read_csv(experiment_data_dir + 'similarity_matrix.csv', index_col=0)
-    similarity_matrix = 0
+    # mabye load the similarities
+    if 'similarity' in columns_to_use:
+        similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
+    else:
+        similarity_matrix = None
+        CLid_to_index = None
 
     # sample until we get R cases (some cases might not have any citations)
     while(len(test_case_rank_scores) < R):
@@ -102,7 +108,8 @@ def compute_ranking_metrics_LR(G,
 
             # grab edge data
             edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
-                                      similarity_matrix, edge_status=None)
+                                      similarity_matrix, CLid_to_index,
+                                      edge_status=None)
 
             # case rankings (CL ids)
             cases_ranking = get_case_ranking_logreg(edge_data,
