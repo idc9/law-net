@@ -5,6 +5,7 @@ import ast
 import tarfile
 import time
 import json
+import gzip
 
 username = 'unc_networks'
 password = 'UNCSTATS'
@@ -42,7 +43,7 @@ def download_court_data(court_name, data_dir):
     #     raise ValueError('invalid court_name')
 
     # Check that data_dir/raw/cases/ exists
-    court_data_dir = data_dir + 'raw/' + court_name + '/cases/'
+    court_data_dir = data_dir + 'raw/' + court_name
 
     # grab cluster files
     cluster_data_dir = court_data_dir + 'clusters/'
@@ -118,7 +119,7 @@ def download_bulk_resource(court_name, resource, data_dir):
         with tarfile.open(resource_data_dir + '%s.tar.gz' % court_name) as tf:
             tf.extractall(path=resource_data_dir)
         # And delete .tar.gz file
-        os.remove('%s/%s.tar.gz' % (resource_data_dir, court_name))
+        os.remove('%s%s.tar.gz' % (resource_data_dir, court_name))
 
     else:
         print "All %s %s files accounted for." % (court_name, resource)
@@ -127,23 +128,36 @@ def download_bulk_resource(court_name, resource, data_dir):
 def download_master_edgelist(data_dir):
     """
     Downloads the master edgelist
+
+    This is a little jenky -- could probably do this much better without
+    writing to disk 7 million times
     """
-    print 'need to finish'
     url = 'https://www.courtlistener.com/api/bulk-data/citations/all.csv.gz'
 
     path = data_dir + 'raw/'
+
+    fname_gz = path + 'all.csv.gz'
+    fname_csv = path + 'edgelist_master_r.csv'
 
     print 'downloading edgelist gzip...'
     download_url(url=url,
                  path=path)
 
-    # TODO: automatically extract file
-    # print '...extracting edglist...'
-    # with tarfile.open(path + 'all.csv.gz') as tf:
-    #     tf.extractall(path=path)
-    #
-    # # And delete .tar.gz file
-    # os.remove(path + 'all.csv.gz')
+    # open gzip
+    with gzip.open(fname_gz, 'rb') as f:
+        unzipped = f.read()
+
+    # save csv file
+    with open(fname_csv, 'w') as f:
+        f.write(unzipped)
+
+    # remove .gzip
+    os.remove(fname_gz)
+
+    # rename columns
+    df = pd.read_csv(fname_csv)
+    df.columns = ['citing', 'cited']
+    df.to_csv(fname_csv, index=False)
 
 
 def url_to_dict(url):

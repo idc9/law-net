@@ -76,24 +76,25 @@ def make_raw_case_metadata_court(court_name, data_dir, remove=True):
 
     data_dir: path to data directory
 
-    clean: if True will place file in data/clean/court_name/network folder
-    otherwise will place file in data/raw/court_name/network folder
-
     remove: if true will remove .json files
     """
 
     metadata = get_raw_case_metadata_from_court(court_name, data_dir, remove)
 
-    network_path = data_dir + 'raw/' + court_name + '/network/'
-    file_name = 'case_metadata_r.csv'
+    court_path = data_dir + 'raw/%s/' % court_name
+    md_path = court_path + 'case_metadata_r.csv'
 
-    if not os.path.exists(network_path):
-        os.makedirs(network_path)
+    # check if court folder exists
+    if os.path.exists(court_path):
+
+        # if the medtadata is already there kill it
+        if os.path.isfile(md_path):
+            os.remove(md_path)
     else:
-        if os.path.isfile(network_path + file_name):
-            os.remove(network_path + file_name)
+        # make court folder if it doesn't exist
+        os.makedirs(court_path)
 
-    metadata.to_csv(network_path + file_name)
+    metadata.to_csv(md_path)
 
 
 def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
@@ -115,9 +116,8 @@ def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
     ------
     Returns a pandas DataFrame
     """
-
-    cluster_dir = data_dir + 'raw/%s/cases/clusters/' % court_name
-    opinion_dir = data_dir + 'raw/%s/cases/opinions/' % court_name
+    cluster_dir = data_dir + 'raw/%s/clusters/' % court_name
+    opinion_dir = data_dir + 'raw/%s/opinions/' % court_name
 
     clusters_already_exist = os.path.exists(cluster_dir)
     opinions_already_exist = os.path.exists(opinion_dir)
@@ -195,7 +195,7 @@ def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
     # print
 
     if remove and not clusters_already_exist:
-        case_dir = data_dir + 'raw/%s/cases/' % court_name
+        case_dir = data_dir + 'raw/%s' % court_name
         remove_folder(case_dir)
 
     return metadata
@@ -274,3 +274,26 @@ def remove_folder(path):
     if os.path.exists(path):
         # remove if exists
         shutil.rmtree(path)
+
+
+def update_court_metadata_raw(data_dir, court_name):
+    """
+    Updates the master raw case metadata for a jurisdiction
+    """
+
+    md_path = data_dir + 'raw/case_metadata_master_r.csv'
+
+    # load old metadata file
+    case_md = pd.read_csv(md_path, index_col='id')
+
+    # remove old cases
+    case_md = case_md[case_md.court != court_name]
+
+    # get updated case metadata
+    updated_court_md = get_raw_case_metadata_from_court(court_name, data_dir,
+                                                        remove=True)
+
+    # update case metadata file
+    case_md = case_md.append(updated_court_md)
+
+    case_md.to_csv(md_path, index=True)

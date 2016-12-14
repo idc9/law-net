@@ -158,7 +158,7 @@ def case_info(case_id):
     print
 
 
-def load_and_clean_graph(data_dir, court_name, ):
+def load_and_clean_graph(data_dir, court_name):
     """
     Kills edges going the wrong way in time
 
@@ -166,7 +166,7 @@ def load_and_clean_graph(data_dir, court_name, ):
     ------
     igraph object
     """
-    graph_path = path = data_dir + 'clean/' + court_name + \
+    graph_path = data_dir + 'clean/' + court_name + \
                         '/' + court_name + '.GraphML'
     if os.path.isfile(graph_path):
         G = ig.Graph.Read_GraphML(graph_path)

@@ -33,7 +33,7 @@ def get_cert_cases_scotus(data_dir, remove=False):
 
     # grab all scotus cases
     case_metadata = pd.read_csv(data_dir + 'raw/case_metadata_master_r.csv',
-                                 index_col='id')
+                                index_col='id')
 
     case_metadata = case_metadata[case_metadata.court == 'scotus']
     case_metadata['date'] = pd.to_datetime(case_metadata['date'])
@@ -47,6 +47,9 @@ def get_cert_cases_scotus(data_dir, remove=False):
     # build the scotus network
     G = get_network(case_metadata, edgelist)
     degrees = G.degree()
+
+    # cases in case_metadata missing opinion files
+    missing_opinion = []
 
     # find zero degree cases that contain the words: 'denied' or 'certiorari'
     case_metadata['cert_case'] = False
@@ -62,7 +65,7 @@ def get_cert_cases_scotus(data_dir, remove=False):
                         if 'denied' in value or 'certiorari' in value:
                             case_metadata.loc[case, 'cert_case'] = True
         else:
-            print 'warning no opinion file for for case %d' % case
+            missing_opinion.append(case)
 
     if remove:
         # remove opinion files
@@ -70,6 +73,9 @@ def get_cert_cases_scotus(data_dir, remove=False):
             os.remove(file_name)
 
         os.rmdir(op_dir)
+
+    print 'there were %d cases missing opinions' % len(missing_opinion)
+    print missing_opinion
 
     return case_metadata[case_metadata['cert_case']].index.tolist()
 
