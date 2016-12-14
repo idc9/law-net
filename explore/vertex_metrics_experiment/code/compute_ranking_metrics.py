@@ -9,8 +9,7 @@ from pipeline_helper_functions import *
 from similarity_matrix import *
 from get_edge_data import *
 
-
-def compute_ranking_metrics_LR(G,
+def compute_ranking_metrics_LR2(G,
                                LogReg,
                                columns_to_use,
                                experiment_data_dir,
@@ -50,22 +49,11 @@ def compute_ranking_metrics_LR(G,
     -------
     The average ranking score over all R cases we tested
     '''
-
-    # seed for selecting test cases
-    if seed:
-        random.seed(seed)
-
-    # select cases for sample
-    possible_citing_cases = set(G.vs.select(year_ge=min(active_years),
-                                            year_le=max(active_years)))
-
     # ranking scores for each test case
     test_case_rank_scores = []
 
-    # other data we might want to keep track of
-    test_cases = set()
-    test_case_out_degrees = []
-    test_case_ranks = []
+    # get list of test cases
+    test_vertices = get_test_cases(G, active_years, R, seed=seed)
 
     # load snapshots
     snapshots_dict = load_snapshots(experiment_data_dir)
@@ -78,61 +66,45 @@ def compute_ranking_metrics_LR(G,
         CLid_to_index = None
 
     # run until we get R test cases (some cases might not have any citations)
-    counter = 1
-    while(len(test_case_rank_scores) < R):
+    for i in range(R):
         if print_progress:
-            if int(log(counter, 2)) == log(counter, 2):
+            if int(log(i+1, 2)) == log(i+1, 2):
                 current_time = datetime.now().strftime('%H:%M:%S')
-                print 'loop %d at %s' % (counter, current_time)
-                print '(%d/%d) test cases' % (len(test_cases), R)
-                print
-            counter += 1
+                print '(%d/%d) at %s' % (i + 1, R, current_time)
 
         # randomly select a case
-        test_case = random.sample(possible_citing_cases, 1)[0]
-
-        # test case citing year
-        ing_year = test_case['year']
-
-        # get neighbors first as ig index
-        actual_citations = G.neighbors(test_case.index, mode='OUT')
-
-        # only keep cited cases coming in years strictly before citing year
-        citations_before = [ig_id for ig_id in actual_citations if G.vs[ig_id]['year'] < ing_year]
+        test_case = test_vertices[i]
 
         # converted ig index to CL id
-        cited_cases = [G.vs[ig_id]['name'] for ig_id in citations_before]
+        cited_cases = get_cited_cases(G, test_case)
 
-        # only score cases who cite at least one case
-        if (len(cited_cases) >= 1) and (test_case['name'] not in test_cases):
-            test_cases.add(test_case['name'])
+        # get vetex metrics in year before citing year
+        snapshot_year = test_case['year'] - 1
 
-            # get vetex metrics in year before citing year
-            snapshot_year = ing_year - 1
+        # grab data frame of vertex metrics for test case's snapshot
+        snapshot_df = snapshots_dict['vertex_metrics_' +
+                                     str(int(snapshot_year))]
 
-            # grab data frame of vertex metrics for test case's snapshot
-            snapshot_df = snapshots_dict['vertex_metrics_' +
-                                         str(int(snapshot_year))]
+        # restrict ourselves to ancestors of ing
+        # case strictly before ing year
+        ancentors = [v.index for v in G.vs.select(year_le=snapshot_year)]
 
-            # restrict ourselves to ancestors of ing
-            # case strictly before ing year
-            ancentors = [v.index for v in G.vs.select(year_le=snapshot_year)]
+        # all edges from ing case to previous cases
+        edgelist = zip([test_case.index] * len(ancentors), ancentors)
 
-            # all edges from ing case to previous cases
-            edgelist = zip([test_case.index] * len(ancentors), ancentors)
+        # grab edge data
+        edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
+                                  similarity_matrix, CLid_to_index,
+                                  edge_status=None)
 
-            # grab edge data
-            edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
-                                      similarity_matrix, CLid_to_index,
-                                      edge_status=None)
+        # case rankings (CL ids)
+        ancestor_ranking = get_case_ranking_logreg(edge_data,
+                                                   LogReg, columns_to_use)
 
-            # case rankings (CL ids)
-            ancestor_ranking = get_case_ranking_logreg(edge_data,
-                                                       LogReg, columns_to_use)
+        # compute rank score
+        score = score_ranking(cited_cases, ancestor_ranking)
 
-            # compute rank score
-            score = score_ranking(cited_cases, ancestor_ranking)
-            test_case_rank_scores.append(score)
+        test_case_rank_scores.append(score)
 
     # return test_case_rank_scores, case_ranks, test_cases
     return test_case_rank_scores
