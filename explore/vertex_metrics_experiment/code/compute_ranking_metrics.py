@@ -2,6 +2,8 @@ import glob
 import numpy as np
 import random as random
 import pandas as pd
+from math import *
+from datetime import datetime
 
 from pipeline_helper_functions import *
 from similarity_matrix import *
@@ -15,7 +17,8 @@ def compute_ranking_metrics_LR(G,
                                active_years,
                                R,
                                year_floor=1900,
-                               seed=None):
+                               seed=None,
+                               print_progress=False):
     '''
     Computes the rank score metric for a given logistic regression object.
 
@@ -60,7 +63,7 @@ def compute_ranking_metrics_LR(G,
     test_case_rank_scores = []
 
     # other data we might want to keep track of
-    test_cases = []
+    test_cases = set()
     test_case_out_degrees = []
     test_case_ranks = []
 
@@ -74,8 +77,16 @@ def compute_ranking_metrics_LR(G,
         similarity_matrix = None
         CLid_to_index = None
 
-    # sample until we get R cases (some cases might not have any citations)
+    # run until we get R test cases (some cases might not have any citations)
+    counter = 1
     while(len(test_case_rank_scores) < R):
+        if print_progress:
+            if int(log(counter, 2)) == log(counter, 2):
+                current_time = datetime.now().strftime('%H:%M:%S')
+                print 'loop %d at %s' % (counter, current_time)
+                print '(%d/%d) test cases' % (len(test_cases), R)
+                print
+            counter += 1
 
         # randomly select a case
         test_case = random.sample(possible_citing_cases, 1)[0]
@@ -87,29 +98,25 @@ def compute_ranking_metrics_LR(G,
         actual_citations = G.neighbors(test_case.index, mode='OUT')
 
         # only keep cited cases coming in years strictly before citing year
-        citations_before = [ig_id for ig_id in actual_citations if G.vs['year'] < ing_year]
+        citations_before = [ig_id for ig_id in actual_citations if G.vs[ig_id]['year'] < ing_year]
 
         # converted ig index to CL id
-        cited_CLids = [int(G.vs[ig_id]['name']) for ig_id in actual_citations]
-        num_citations = len(cited_CLids)
+        cited_cases = [G.vs[ig_id]['name'] for ig_id in citations_before]
 
         # only score cases who cite at least one case
-        if num_citations >= 1:
-            test_cases.append(test_case['name'])
+        if (len(cited_cases) >= 1) and (test_case['name'] not in test_cases):
+            test_cases.add(test_case['name'])
 
             # get vetex metrics in year before citing year
             snapshot_year = ing_year - 1
-            snapshot_year = get_snapshot_year(snapshot_year,
-                                              active_years)
 
             # grab data frame of vertex metrics for test case's snapshot
             snapshot_df = snapshots_dict['vertex_metrics_' +
-                                         str(snapshot_year)]
+                                         str(int(snapshot_year))]
 
             # restrict ourselves to ancestors of ing
             # case strictly before ing year
-            ancentors = [v.index for v in G.vs.select(year_le=ing_year - 1)]
-            num_ancentors = len(ancentors)
+            ancentors = [v.index for v in G.vs.select(year_le=snapshot_year)]
 
             # all edges from ing case to previous cases
             edgelist = zip([test_case.index] * len(ancentors), ancentors)
@@ -120,35 +127,97 @@ def compute_ranking_metrics_LR(G,
                                       edge_status=None)
 
             # case rankings (CL ids)
-            cases_ranking = get_case_ranking_logreg(edge_data,
-                                                    LogReg, columns_to_use)
+            ancestor_ranking = get_case_ranking_logreg(edge_data,
+                                                       LogReg, columns_to_use)
 
-            # keep track of how many citations case has
-            # test_case_out_degrees.append(num_citations)
-
-            # rank and citaions
-            case_scores = []
-            case_ranks = []  # could keep track of this if we wanted
-
-            # compute rank score for each case test case actually cited
-            for cited in cited_CLids:
-
-                # where cited case was ranked
-                rank = np.where(cases_ranking == cited)[0][0]
-
-                # score the ranking
-                rank_score = get_rank_score(rank, num_ancentors)
-
-                # maybe keep track of some other data
-                case_scores.append(rank_score)
-                case_ranks.append(rank)
-
-            # add score to list of all cases' scores
-            # test_case_ranks.append(case_ranks)
-            test_case_rank_scores.append(np.mean(case_scores))
+            # compute rank score
+            score = score_ranking(cited_cases, ancestor_ranking)
+            test_case_rank_scores.append(score)
 
     # return test_case_rank_scores, case_ranks, test_cases
     return test_case_rank_scores
+
+
+def get_test_cases(G, active_years, num_test_cases, seed=None):
+    """
+    Get a list of test cases
+    - test cases must have at least one citation
+    - cited case year must be strictly less than citing case year
+
+    Parameters
+    ----------
+    G: igraph object
+
+    active_years: list of possible citing years
+
+    num_test_cases: number of test cases
+
+    seed: seed for sampling vertices
+
+    Output
+    ------
+    returns a list of test cases (igraph vertices)
+    """
+
+    # seed for selecting test cases
+    if seed:
+        random.seed(seed)
+
+    # select cases for sample
+    possible_citing_cases = set(G.vs.select(year_ge=min(active_years),
+                                            year_le=max(active_years)))
+
+    # other data we might want to keep track of
+    test_cases = set()
+
+    # run until we get enough test cases
+    while(len(test_cases) < num_test_cases):
+
+        # randomly select a case
+        test_case = random.sample(possible_citing_cases, 1)[0]
+
+        # test case citing year
+        ing_year = test_case['year']
+
+        # get neighbors first as ig index
+        cited_cases = G.neighbors(test_case.index, mode='OUT')
+
+        # only keep cited cases coming in years strictly before citing year
+        cited_cases_pre = [ig_id for ig_id in cited_cases
+                           if G.vs[ig_id]['year'] < ing_year]
+
+        # only add cases who have at least one citation
+        if len(cited_cases_pre) >= 1:
+            # make sure case has already been added
+            if test_case not in test_cases:
+                test_cases.add(test_case)
+
+    return list(test_cases)
+
+
+def get_cited_cases(G, citing_vertex):
+    """
+    Returns the ciations of a cases whose cited year
+    is strictly less than citing year
+
+    Parameters
+    ----------
+    G: igraph object
+
+    citing_vertex: igraph vertex
+
+    Output
+    ------
+    list of CL ids of cited cases
+    """
+
+    # get neighbors first as ig index
+    all_citations = G.neighbors(citing_vertex.index, mode='OUT')
+
+    # return CL indices of cases
+    # only return cited cases whose year is stictly less than citing year
+    return [G.vs[ig_id]['name'] for ig_id in all_citations
+            if G.vs[ig_id]['year'] < citing_vertex['year']]
 
 
 def get_case_ranking_logreg(edge_data, LogReg, columns_to_use):
@@ -176,7 +245,7 @@ def get_case_ranking_logreg(edge_data, LogReg, columns_to_use):
                                kind='mergesort', inplace=True)
 
     # case rankings (CL ids)
-    return np.array([int(e.split('_')[1]) for e in citation_probs.index])
+    return np.array([e.split('_')[1] for e in citation_probs.index])
 
 
 def get_attachment_probabilty_logreg(LogReg, X):
@@ -220,3 +289,37 @@ def get_rank_score(position, number_of_items):
     number_of_items: how many items were ranked
     """
     return 1.0 - float(position) / (number_of_items - 1.0)
+
+
+def score_ranking(cited_cases, ancestor_ranking):
+    """
+    Retuns the rank score for a case
+
+    Parameters
+    ----------
+    cited_cases: list of cases that were cited
+
+    cases_ranking: ranking of all ancestors
+
+    Output
+    ------
+    average of cited case rank scores
+    """
+
+    case_scores = []
+
+    # number of ancestors
+    num_items = len(ancestor_ranking)
+
+    # compute rank score for each case test case actually cited
+    for case in cited_cases:
+
+        # where cited case was ranked
+        rank = np.where(ancestor_ranking == case)[0][0]
+
+        # score the ranking
+        rank_score = get_rank_score(rank, num_items)
+
+        case_scores.append(rank_score)
+
+    return np.mean(case_scores)
