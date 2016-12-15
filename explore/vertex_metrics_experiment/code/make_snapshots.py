@@ -83,24 +83,58 @@ def create_metric_column(G, metric):
     metric: string of the vertex metrics we want to compute
     (pagerank, indegree, etc)
 
+    - indegree
+    - outdegree
+    - degree
+    - d_pagerank
+    - u_pagerank
+    - d_closeness
+    - u_closeness
+    - d_betweenness
+    - u_betweenness
+    - authorities
+    - hubs
+    - d_eigen
+    - u_eigen
+
     Output
     -------
     metric: an array of size G.vs that contains the metric for G's vertices
             or does not return value on invalid metric parameter
     """
     # calculates metric which matched parameter
-    if metric == 'pagerank':
-        metric_column = G.pagerank()
-    elif metric == 's_pagerank':
-        # scale page rank by number of nodes
-        pr_vals = G.pagerank()
-        num_nodes = len(G.vs)
-        metric_column = [pr * num_nodes for pr in pr_vals]
-    elif metric == 'indegree':
+    if metric == 'indegree':
         metric_column = G.indegree()
+    elif metric == 'outdegree':
+        metric_column = G.outdegree()
+    elif metric == 'degree':
+        metric_column = G.degree()
+    elif metric == 'd_pagerank':
+        # scale page rank by number of nodes
+        scaled_pr_vals = np.array(G.pagerank()) * len(G.vs)
+        metric_column = scaled_pr_vals.tolist()
+    elif metric == 'u_pagerank':
+        # scale page rank by number of nodes
+        scaled_pr_vals = np.array(G.as_undirected().pagerank()) * len(G.vs)
+        metric_column = scaled_pr_vals.tolist()
+    elif metric == 'd_closeness':
+        metric_column = G.closeness(mode="IN", normalized=True)
+    elif metric == 'u_closeness':
+        metric_column = G.as_undirected().closeness(normalized=True)
+    elif metric == 'd_betweenness':
+        metric_column = G.betweenness(directed=True)
+    elif metric == 'u_betweenness':
+        metric_column = G.as_undirected().betweenness(directed=True)
+    elif metric == 'authorities':
+        metric_column = G.authority_score()
     elif metric == 'hubs':
         metric_column = G.hub_score(scale=True)
+    elif metric == 'd_eigen':
+        metric_column = G.eigenvector_centrality()
+    elif metric == 'u_eigen':
+        metric_column = G.as_undirected().eigenvector_centrality()
     else:
-        raise ValueError('%s not implemented' % metric)
+        print 'WARNING: %s is not implement' % metric
+        metric_column = [np.nan] * len(G.vs)
 
     return metric_column
