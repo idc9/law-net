@@ -9,7 +9,8 @@ from pipeline_helper_functions import *
 from similarity_matrix import *
 from get_edge_data import *
 
-def compute_ranking_metrics_LR2(G,
+
+def compute_ranking_metrics_LR(G,
                                LogReg,
                                columns_to_use,
                                experiment_data_dir,

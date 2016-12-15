@@ -3,16 +3,28 @@ import cPickle as pickle
 from pipeline_helper_functions import *
 from sklearn.metrics.pairwise import cosine_similarity
 
+import time
 
-def save_similarity_matrix(experiment_data_dir, similarity_matrix,
+
+def make_similarity_matrix(experiment_data_dir, tfidf_matrix,
                            CLid_to_index):
     """
     saves similarity matrix and CLid_to_index dict
     """
 
+    # compute cosine similarities
+    start = time.time()
+
+    similarity_matrix = cosine_similarity(tfidf_matrix,
+                                          dense_output=True)
+
+    # change data type
+    similarity_matrix = similarity_matrix.astype(np.float16)
+
     # save similarity matrix
-    save_sparse_csr(filename=experiment_data_dir + 'cosine_sims',
-                    array=S)
+    start = time.time()
+
+    np.save(experiment_data_dir + 'cosine_sims', similarity_matrix)
 
     # save clid to index map
     with open(experiment_data_dir + 'CLid_to_index.p', 'wb') as fp:
@@ -33,12 +45,12 @@ def load_similarity_matrix(experiment_data_dir):
 
     >>> similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
     """
-    similarity_matrix = load_sparse_csr(filename=experiment_data_dir + 'cosine_sims.npz')
+    similarity_matrix = np.load(experiment_data_dir + 'cosine_sims.npy')
 
     with open(experiment_data_dir + 'CLid_to_index.p', 'rb') as f:
         CLid_to_index = pickle.load(f)
 
-    return similarity_matrix, CLid_to_index
+    return similarity_matrix.astype(np.float64), CLid_to_index
 
 
 def get_similarity(similarity_matrix, CLid_pair, CLid_to_index):

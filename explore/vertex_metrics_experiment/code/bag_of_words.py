@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
-def get_td_idf(normalized_text_dict):
+def get_td_idf(normalized_text_dict, min_df=0, max_df=1):
     """
     computes the td-idf matrix of a corpus
 
@@ -20,7 +20,7 @@ def get_td_idf(normalized_text_dict):
     CLid_to_index: maps CL id to index (dict)
     """
     # initialize tdidf vectorizer
-    tfidf = TfidfVectorizer()
+    tfidf = TfidfVectorizer(min_df=min_df, max_df=max_df)
 
     # rows are documents (ordered by token_dict.keys())
     # columns are tersm (ordered by vocab below)

@@ -50,7 +50,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
     present_edgelist = get_present_edges(G, active_years)
 
     # organize edges by ing snapshot year
-    edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, present_edgelist,
+    edge_dict = get_edges_by_snapshot_dict(G, present_edgelist,
                                                          active_years)
 
     # add present edge data
@@ -61,7 +61,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
         snapshot_df = snapshots_dict['vertex_metrics_' + str(snapshot_year)]
 
         # edges to add whose ing year is in the snapshot year
-        edges = edges_by_snap_year_dict[snapshot_year]
+        edges = edge_dict[snapshot_year]
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
@@ -75,7 +75,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
                                           active_years, seed=seed)
 
     # organize edges by ing snapshot year
-    edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, absent_edgelist,
+    edge_dict = get_edges_by_snapshot_dict(G, absent_edgelist,
                                                          active_years)
 
     # add absent edge data
@@ -86,7 +86,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
         snapshot_df = snapshots_dict['vertex_metrics_' + str(snapshot_year)]
 
         # edges to add whos ing year is in the snapshot year
-        edges = edges_by_snap_year_dict[snapshot_year]
+        edges = edge_dict[snapshot_year]
 
         # get edge data frame for snapshot year
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
@@ -127,19 +127,20 @@ def update_edge_df(G, experiment_data_dir, active_years, columns_to_add):
     edgelist = [CLid_edge_to_IGid(G, e) for e in edgelist_CLid]
 
     # organize edges by ing snapshot year
-    edges_by_snap_year_dict = get_edges_by_snapshot_dict(G, edgelist,
+    edge_dict = get_edges_by_snapshot_dict(G, edgelist,
                                                          active_years)
 
     # initialize temp dataframe
     edge_data_to_add = pd.DataFrame(columns=columns_to_add)
 
     # add present edge data
-    for sn_year in active_years:
+    for year in active_years:
+        snapshot_year = int(year - 1)
         # vertex metrcs in snapshot year
-        snapshot_df = snapshots_dict['vertex_metrics_' + str(sn_year)]
+        snapshot_df = snapshots_dict['vertex_metrics_' + str(snapshot_year)]
 
         # edges to add whose ing year is in the snapshot year
-        edges = edges_by_snap_year_dict[sn_year]
+        edges = edge_dict[snapshot_year]
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_add,
@@ -181,11 +182,11 @@ def get_edges_by_snapshot_dict(G, edgelist, active_years):
     snap_years = [G.vs[edge[0]]['year'] - 1 for edge in edgelist]
 
     # dict that organizes edges by ing snapshot year
-    edges_by_ing_snap_year_dict = {y-1: [] for y in active_years}
+    edge_dict = {y-1: [] for y in active_years}
     for i in range(num_edges):
-        edges_by_ing_snap_year_dict[snap_years[i]].append(edgelist[i])
+        edge_dict[snap_years[i]].append(edgelist[i])
 
-    return edges_by_ing_snap_year_dict
+    return edge_dict
 
 
 def sample_absent_edges(G, num_samples, active_years, seed=None):
