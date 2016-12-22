@@ -10,105 +10,72 @@ from similarity_matrix import *
 from get_edge_data import *
 
 
-def compute_ranking_metrics_LR(G,
-                               LogReg,
-                               columns_to_use,
-                               experiment_data_dir,
-                               active_years,
-                               R,
-                               year_floor=1900,
-                               seed=None,
-                               print_progress=False):
-    '''
-    Computes the rank score metric for a given logistic regression object.
+def get_test_case_scores_LR(G, test_cases, snapshots_dict,
+                            similarity_matrix, CLid_to_index,
+                            LogReg, columns_to_use, print_progress=False):
+    """
+    computes the scores for each test case
 
-    Sample R test cases that have at least one citation. For each test case
-    rank test case's ancestors then compute rank score for test cases actual
-    citations.
+    returns a pandas series indexed by test case clids
 
-    Parameters
-    ------------
-    G: network (so we can get each cases' ancestor network)
+    # TODO: this could be parallelized
 
-    LogReg: a logistic regression object
-    (i.e. the output of fit_logistic_regression)
-
-    columns_to_use: list of column names of edge metrics data frame that we
-    should use to fit logistic regression
-
-    path_to_vertex_metrics_folder: we will need these for prediciton
-
-    year_interval: the year interval between each vertex metric .csv file
-
-    R: how many cases to compute ranking metrics for
-
-    year_floor: sample only cases after this year
-
-    seed: random seed for selecting cases whose ancsetry to score
-
-    Output
-    -------
-    The average ranking score over all R cases we tested
-    '''
-    # ranking scores for each test case
-    test_case_rank_scores = []
-
-    # get list of test cases
-    test_vertices = get_test_cases(G, active_years, R, seed=seed)
-
-    # load snapshots
-    snapshots_dict = load_snapshots(experiment_data_dir)
-
-    # mabye load the similarities
-    if 'similarity' in columns_to_use:
-        similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
-    else:
-        similarity_matrix = None
-        CLid_to_index = None
-
-    # run until we get R test cases (some cases might not have any citations)
-    for i in range(R):
+    """
+    # compute scores for each test case
+    scores = pd.Series(index=[c['name'] for c in test_cases])
+    i = 0
+    for test_case in test_cases:
+        i += 1
         if print_progress:
-            if int(log(i+1, 2)) == log(i+1, 2):
+            if int(log(i, 2)) == log(i, 2):
                 current_time = datetime.now().strftime('%H:%M:%S')
-                print '(%d/%d) at %s' % (i + 1, R, current_time)
+                print '(%d/%d) at %s' % (i, len(test_cases), current_time)
 
-        # randomly select a case
-        test_case = test_vertices[i]
+        score = get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
+                             CLid_to_index, LogReg, columns_to_use)
 
-        # converted ig index to CL id
-        cited_cases = get_cited_cases(G, test_case)
+        scores[test_case['name']] = score
 
-        # get vetex metrics in year before citing year
-        snapshot_year = test_case['year'] - 1
+    return scores
 
-        # grab data frame of vertex metrics for test case's snapshot
-        snapshot_df = snapshots_dict['vertex_metrics_' +
-                                     str(int(snapshot_year))]
 
-        # restrict ourselves to ancestors of ing
-        # case strictly before ing year
-        ancentors = [v.index for v in G.vs.select(year_le=snapshot_year)]
+def get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
+                 CLid_to_index, LogReg, columns_to_use):
+    """
+    Gets the rank score for a given test case
+    """
 
-        # all edges from ing case to previous cases
-        edgelist = zip([test_case.index] * len(ancentors), ancentors)
+    # converted ig index to CL id
+    cited_cases = get_cited_cases(G, test_case)
 
-        # grab edge data
-        edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
-                                  similarity_matrix, CLid_to_index,
-                                  edge_status=None)
+    # get vetex metrics in year before citing year
+    snapshot_year = test_case['year'] - 1
 
-        # case rankings (CL ids)
-        ancestor_ranking = get_case_ranking_logreg(edge_data,
-                                                   LogReg, columns_to_use)
+    # grab data frame of vertex metrics for test case's snapshot
+    snapshot_df = snapshots_dict['vertex_metrics_' +
+                                 str(int(snapshot_year))]
 
-        # compute rank score
-        score = score_ranking(cited_cases, ancestor_ranking)
+    # restrict ourselves to ancestors of ing
+    # case strictly before ing year
+    ancentors = [v.index for v in G.vs.select(year_le=snapshot_year)]
 
-        test_case_rank_scores.append(score)
+    # all edges from ing case to previous cases
+    edgelist = zip([test_case.index] * len(ancentors), ancentors)
 
-    # return test_case_rank_scores, case_ranks, test_cases
-    return test_case_rank_scores
+    # grab edge data
+    edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
+                              similarity_matrix, CLid_to_index,
+                              edge_status=None)
+
+    # case rankings (CL ids)
+    ancestor_ranking = get_case_ranking_logreg(edge_data,
+                                               LogReg,
+                                               columns_to_use)
+
+    # compute rank score
+    score = score_ranking(cited_cases, ancestor_ranking)
+
+    return score
 
 
 def get_test_cases(G, active_years, num_test_cases, seed=None):
@@ -191,6 +158,33 @@ def get_cited_cases(G, citing_vertex):
     # only return cited cases whose year is stictly less than citing year
     return [G.vs[ig_id]['name'] for ig_id in all_citations
             if G.vs[ig_id]['year'] < citing_vertex['year']]
+
+
+def get_case_ranking_by_metric(edge_data, metric):
+    """
+    Sorts cases by a given metric
+
+    Parameters
+    ----------
+    edge_data: edge data frame
+
+    metric: a single column from edge_data
+
+    Output
+    ------
+    CL ids of ranked cases
+    """
+
+    # larger value of metric is means more likely to be cited
+    large_is_good = True
+    ascending = (not large_is_good)
+
+    # sort edges by metric
+    sored_edges = edge_data.sort_values(by=metric,
+                                        ascending=ascending).index.tolist()
+
+    # return cited case
+    return np.array([e.split('_')[1] for e in sored_edges])
 
 
 def get_case_ranking_logreg(edge_data, LogReg, columns_to_use):

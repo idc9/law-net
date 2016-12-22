@@ -1,13 +1,16 @@
-
 from __future__ import division
 import pandas as pd
-from pipeline_helper_functions import *
 import numpy as np
 import re
+import copy
+from math import *
+from datetime import datetime
+
+from pipeline_helper_functions import *
 
 
 def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
-                                 experiment_data_dir):
+                                 experiment_data_dir, print_progress=True):
     """
     Creates the data frames with vertex metics in given years
 
@@ -27,10 +30,19 @@ def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
     writes csv files of the vertex metric data frame for each year in years
     """
     # include year before min active year
-    active_years.append(min(active_years) - 1)
+    all_years = copy.copy(active_years)
+    all_years.append(min(active_years) - 1)
 
     # create a vertex df for each year T
-    for T in active_years:
+    i = 0
+    for T in all_years:
+        i += 1
+        if print_progress:
+            if int(log(i+1, 2)) == log(i+1, 2):
+                current_time = datetime.now().strftime('%H:%M:%S')
+                print 'year %d, (%d/%d) at %s' % (T, i + 1,
+                                                  len(all_years), current_time)
+        
         # get subgraph at particular time
         G_T = get_network_at_time(G, T)
 
@@ -102,39 +114,41 @@ def create_metric_column(G, metric):
     metric: an array of size G.vs that contains the metric for G's vertices
             or does not return value on invalid metric parameter
     """
-    # calculates metric which matched parameter
-    if metric == 'indegree':
-        metric_column = G.indegree()
-    elif metric == 'outdegree':
-        metric_column = G.outdegree()
-    elif metric == 'degree':
-        metric_column = G.degree()
-    elif metric == 'd_pagerank':
-        # scale page rank by number of nodes
-        scaled_pr_vals = np.array(G.pagerank()) * len(G.vs)
-        metric_column = scaled_pr_vals.tolist()
-    elif metric == 'u_pagerank':
-        # scale page rank by number of nodes
-        scaled_pr_vals = np.array(G.as_undirected().pagerank()) * len(G.vs)
-        metric_column = scaled_pr_vals.tolist()
-    elif metric == 'd_closeness':
-        metric_column = G.closeness(mode="IN", normalized=True)
-    elif metric == 'u_closeness':
-        metric_column = G.as_undirected().closeness(normalized=True)
-    elif metric == 'd_betweenness':
-        metric_column = G.betweenness(directed=True)
-    elif metric == 'u_betweenness':
-        metric_column = G.as_undirected().betweenness(directed=True)
-    elif metric == 'authorities':
-        metric_column = G.authority_score()
-    elif metric == 'hubs':
-        metric_column = G.hub_score(scale=True)
-    elif metric == 'd_eigen':
-        metric_column = G.eigenvector_centrality()
-    elif metric == 'u_eigen':
-        metric_column = G.as_undirected().eigenvector_centrality()
-    else:
-        print 'WARNING: %s is not implement' % metric
-        metric_column = [np.nan] * len(G.vs)
+    try:
+        # calculates metric which matched parameter
+        if metric == 'indegree':
+            metric_column = G.indegree()
+        elif metric == 'outdegree':
+            metric_column = G.outdegree()
+        elif metric == 'degree':
+            metric_column = G.degree()
+        elif metric == 'd_pagerank':
+            # scale page rank by number of nodes
+            scaled_pr_vals = np.array(G.pagerank()) * len(G.vs)
+            metric_column = scaled_pr_vals.tolist()
+        elif metric == 'u_pagerank':
+            # scale page rank by number of nodes
+            scaled_pr_vals = np.array(G.as_undirected().pagerank()) * len(G.vs)
+            metric_column = scaled_pr_vals.tolist()
+        elif metric == 'd_closeness':
+            metric_column = G.closeness(mode="IN", normalized=True)
+        elif metric == 'u_closeness':
+            metric_column = G.as_undirected().closeness(normalized=True)
+        elif metric == 'd_betweenness':
+            metric_column = G.betweenness(directed=True)
+        elif metric == 'u_betweenness':
+            metric_column = G.as_undirected().betweenness(directed=True)
+        elif metric == 'authorities':
+            metric_column = G.authority_score()
+        elif metric == 'hubs':
+            metric_column = G.hub_score(scale=True)
+        elif metric == 'd_eigen':
+            metric_column = G.eigenvector_centrality()
+        elif metric == 'u_eigen':
+            metric_column = G.as_undirected().eigenvector_centrality()
+
+    except Exception:
+        print 'problem with %s' % metric
+        metric_column = metric_column = [np.nan] * len(G.vs)
 
     return metric_column
