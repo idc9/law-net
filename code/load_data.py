@@ -144,18 +144,18 @@ def case_info(case_id):
     """
     Given the case id returns a link to the opinion file on court listener
     """
-    url = 'https://www.courtlistener.com/api/rest/v3/clusters/%s/?format=json'\
+    url = 'https://www.courtlistener.com/api/rest/v3/opinions/%s/?format=json'\
           % case_id
 
     case = url_to_dict(url)
     courtlistener_url = 'https://www.courtlistener.com'
     opinion_url = courtlistener_url + case['absolute_url']
 
-    print case['case_name']
-    print case['date_filed']
-    print
+    # print case['case_name']
+    # print case['date_filed']
+    # print
     print opinion_url
-    print
+    # print
 
 
 def load_and_clean_graph(data_dir, court_name):

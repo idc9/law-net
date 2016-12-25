@@ -11,9 +11,10 @@ from similarity_matrix import *
 from attachment_model_inference import *
 
 
-def get_all_individual_rankscores_LR(G, test_params, metrics,
-                                     include_similarity, experiment_data_dir,
-                                     print_progress=True):
+def get_individual_rankscores_LR(G, test_params, metrics,
+                                 include_similarity, experiment_data_dir,
+                                 metric_normalization=None,
+                                 print_progress=True):
     """
     Computes rank scores for each metric individually in metrics list
     """
@@ -51,6 +52,7 @@ def get_all_individual_rankscores_LR(G, test_params, metrics,
         # either all metrics or individual metric
         if metric == 'all':
             columns_to_use = metrics
+            columns_to_use.remove('all')
         else:
             columns_to_use = [metric]
 
@@ -64,7 +66,9 @@ def get_all_individual_rankscores_LR(G, test_params, metrics,
         # compute scores on test cases
         testcase_scores = get_test_case_scores_LR(G, test_cases, snapshots_dict,
                                                   similarity_matrix, CLid_to_index,
-                                                  LogReg, columns_to_use, print_progress)
+                                                  LogReg, columns_to_use,
+                                                  metric_normalization,
+                                                  print_progress)
 
         scores[metric] = testcase_scores
 

@@ -6,9 +6,11 @@ from similarity_matrix import *
 
 
 def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
-                  similarity_matrix, CLid_to_index, edge_status=None):
+                  similarity_matrix, CLid_to_index,
+                  metric_normalization=None, edge_status=None):
     """
     Returns a data frame for all edges from given edge list
+    for a given snapshot
 
     Parameters
     ----------

@@ -12,7 +12,8 @@ from get_edge_data import *
 
 def get_test_case_scores_LR(G, test_cases, snapshots_dict,
                             similarity_matrix, CLid_to_index,
-                            LogReg, columns_to_use, print_progress=False):
+                            LogReg, columns_to_use, metric_normalization,
+                            print_progress=False):
     """
     computes the scores for each test case
 
@@ -32,7 +33,8 @@ def get_test_case_scores_LR(G, test_cases, snapshots_dict,
                 print '(%d/%d) at %s' % (i, len(test_cases), current_time)
 
         score = get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
-                             CLid_to_index, LogReg, columns_to_use)
+                             CLid_to_index, LogReg, columns_to_use,
+                             metric_normalization)
 
         scores[test_case['name']] = score
 
@@ -40,7 +42,7 @@ def get_test_case_scores_LR(G, test_cases, snapshots_dict,
 
 
 def get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
-                 CLid_to_index, LogReg, columns_to_use):
+                 CLid_to_index, LogReg, columns_to_use, metric_normalization):
     """
     Gets the rank score for a given test case
     """
@@ -65,7 +67,7 @@ def get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
     # grab edge data
     edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
                               similarity_matrix, CLid_to_index,
-                              edge_status=None)
+                              metric_normalization, edge_status=None)
 
     # case rankings (CL ids)
     ancestor_ranking = get_case_ranking_logreg(edge_data,

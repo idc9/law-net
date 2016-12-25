@@ -10,7 +10,8 @@ from get_edge_data import *
 
 
 def make_edge_df(G, experiment_data_dir, active_years,
-                 num_non_edges_to_add, columns_to_use, seed=None):
+                 num_non_edges_to_add, columns_to_use,
+                 metric_normalization=None, seed=None):
     """
     Creates the edge data frame
 
@@ -66,6 +67,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
                                      similarity_matrix, CLid_to_index,
+                                     metric_normalization,
                                      edge_status='present')
 
         edge_data = edge_data.append(sn_edge_data)
@@ -76,7 +78,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
 
     # organize edges by ing snapshot year
     edge_dict = get_edges_by_snapshot_dict(G, absent_edgelist,
-                                                         active_years)
+                                           active_years)
 
     # add absent edge data
     for year in active_years:
