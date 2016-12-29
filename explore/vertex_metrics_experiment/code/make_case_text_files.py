@@ -10,31 +10,7 @@ from nltk.corpus import stopwords
 from pipeline.download_data import json_to_dict
 
 
-def get_text_from_json(json_file):
-    """
-    Grabs the text of an opinion file from the json file
-    """
-    # get html from json file
-    # check each of these keys for the case text
-    html = ''
-    keys_to_try = ['html', 'plain_text', 'html_with_citations',
-                   'html_lawbox', 'html_columbia']
-    for key in keys_to_try:
-        contents = json_file[key]
-
-        # if the contents is not empty then extract the text and move on
-        if (contents is not None) and len(contents) > 0:
-            html = contents
-            break
-
-    # parse html with bs4
-    parsed_html = BeautifulSoup(html, 'html.parser')
-
-    # grab the text of the opinion
-    return parsed_html.get_text()
-
-
-def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None):
+def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None, output_path=None):
     """
     Convertes the .json files to text files and
     does some initial pre-processing
@@ -58,7 +34,8 @@ def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None):
     """
 
     input_path = data_dir + 'raw/' + court_name + '/opinions/'
-    output_path = data_dir + 'vertex_metrics_experiment/textfiles/'
+    if not output_path:
+        output_path = data_dir + 'vertex_metrics_experiment/textfiles/'
 
     if not os.path.exists(input_path):
         raise ValueError('input folder does not exist')
@@ -174,3 +151,27 @@ def get_normalized_text_dict(experiment_data_dir):
         normalized_text_dict[clid] = text_normalization(text)
 
     return normalized_text_dict
+
+
+def get_text_from_json(json_file):
+    """
+    Grabs the text of an opinion file from the json file
+    """
+    # get html from json file
+    # check each of these keys for the case text
+    html = ''
+    keys_to_try = ['html', 'plain_text', 'html_with_citations',
+                   'html_lawbox', 'html_columbia']
+    for key in keys_to_try:
+        contents = json_file[key]
+
+        # if the contents is not empty then extract the text and move on
+        if (contents is not None) and len(contents) > 0:
+            html = contents
+            break
+
+    # parse html with bs4
+    parsed_html = BeautifulSoup(html, 'html.parser')
+
+    # grab the text of the opinion
+    return parsed_html.get_text()
