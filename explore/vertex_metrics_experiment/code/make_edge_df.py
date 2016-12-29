@@ -7,6 +7,7 @@ import os
 from pipeline_helper_functions import *
 from similarity_matrix import *
 from get_edge_data import *
+from bag_of_words import *
 
 
 def make_edge_df(G, experiment_data_dir, active_years,
@@ -37,10 +38,10 @@ def make_edge_df(G, experiment_data_dir, active_years,
 
     # mabye load the similarities
     if 'similarity' in columns_to_use:
-        similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
+        tfidf_matrix, op_id_to_bow_id = load_tf_idf(experiment_data_dir + 'nlp/')
     else:
-        similarity_matrix = None
-        CLid_to_index = None
+        tfidf_matrix = None
+        op_id_to_bow_id = None
 
     # initialize edge data frame
     colnames = copy.deepcopy(columns_to_use)
@@ -51,8 +52,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
     present_edgelist = get_present_edges(G, active_years)
 
     # organize edges by ing snapshot year
-    edge_dict = get_edges_by_snapshot_dict(G, present_edgelist,
-                                                         active_years)
+    edge_dict = get_edges_by_snapshot_dict(G, present_edgelist, active_years)
 
     # add present edge data
     for year in active_years:
@@ -66,7 +66,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
-                                     similarity_matrix, CLid_to_index,
+                                     tfidf_matrix, op_id_to_bow_id,
                                      metric_normalization,
                                      edge_status='present')
 
@@ -92,7 +92,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
 
         # get edge data frame for snapshot year
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
-                                     similarity_matrix, CLid_to_index,
+                                     tfidf_matrix, op_id_to_bow_id,
                                      edge_status='absent')
 
         edge_data = edge_data.append(sn_edge_data)
@@ -118,19 +118,18 @@ def update_edge_df(G, experiment_data_dir, active_years, columns_to_add):
         raise ValueError('cant find edge data')
 
     # mabye load the similarities
-    if 'similarity' in columns_to_add:
-        similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
+    if 'similarity' in columns_to_use:
+        tfidf_matrix, op_id_to_bow_id = load_tf_idf(experiment_data_dir + 'nlp/')
     else:
-        similarity_matrix = None
-        CLid_to_index = None
+        tfidf_matrix = None
+        op_id_to_bow_id = None
 
     # get edges that are in edge_data then convert them to igraph indices
     edgelist_CLid = [get_edges_from_str(e) for e in edge_data.index]
     edgelist = [CLid_edge_to_IGid(G, e) for e in edgelist_CLid]
 
     # organize edges by ing snapshot year
-    edge_dict = get_edges_by_snapshot_dict(G, edgelist,
-                                                         active_years)
+    edge_dict = get_edges_by_snapshot_dict(G, edgelist, active_years)
 
     # initialize temp dataframe
     edge_data_to_add = pd.DataFrame(columns=columns_to_add)
@@ -146,7 +145,7 @@ def update_edge_df(G, experiment_data_dir, active_years, columns_to_add):
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_add,
-                                     similarity_matrix, CLid_to_index)
+                                     tfidf_matrix, op_id_to_bow_id )
         edge_data_to_add = edge_data_to_add.append(sn_edge_data)
 
     # add new columns

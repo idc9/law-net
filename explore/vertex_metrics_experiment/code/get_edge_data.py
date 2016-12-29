@@ -6,7 +6,7 @@ from similarity_matrix import *
 
 
 def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
-                  similarity_matrix, CLid_to_index,
+                  tfidf_matrix=None, op_id_to_bow_id=None,
                   metric_normalization=None, edge_status=None):
     """
     Returns a data frame for all edges from given edge list
@@ -27,6 +27,10 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
 
     edge_status: are the edges all present or absent or do we need to find out
     """
+
+    # make sure columns_to_use is a list
+    if type(columns_to_use) == str:
+        columns_to_use = [columns_to_use]
 
     num_edges = len(edgelist)
 
@@ -55,9 +59,9 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
             halflife = 10
             edge_data[metric] = 2.0 ** ((ing_year - ed_year)/halflife) * edge_data['indegree']
         elif metric == 'similarity':
-            edge_data[metric] = get_similarities(similarity_matrix,
-                                                 zip(ing_CLids, ed_CLids),
-                                                 CLid_to_index)
+            edge_data[metric] = compute_similarities(tfidf_matrix,
+                                                     zip(ing_CLids, ed_CLids),
+                                                     op_id_to_bow_id)
 
     # add edge status
     if edge_status is not None:

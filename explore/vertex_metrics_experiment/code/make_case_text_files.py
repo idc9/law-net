@@ -10,7 +10,8 @@ from nltk.corpus import stopwords
 from pipeline.download_data import json_to_dict
 
 
-def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None, output_path=None):
+def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None,
+                    output_path=None):
     """
     Convertes the .json files to text files and
     does some initial pre-processing

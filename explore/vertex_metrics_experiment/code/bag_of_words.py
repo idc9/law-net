@@ -1,7 +1,12 @@
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 import re
 import glob
+import cPickle as pickle
+
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+
+from make_case_text_files import text_normalization
+from pipeline_helper_functions import save_sparse_csr, load_sparse_csr
 
 
 def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
@@ -19,16 +24,6 @@ def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
     vocab: list of the vocabulary (ordered by the dict keys)
 
     op_id_to_tfidf_id: maps CL opinon id to index (dict)
-
-    # to load
-    tfidf_matrix =
-    load_sparse_csr(experiment_data_dir + 'tfidf_matrix')
-
-    with open(experiment_data_dir + 'op_id_to_bow_id.p', 'rb') as f:
-        op_id_to_bow_id = pickle.load(f)
-
-    with open(experiment_data_dir + 'vocab.p', 'rb') as f:
-        vocab = pickle.load(f)
     """
 
     # text files
@@ -39,7 +34,7 @@ def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
 
     # compute bag of words
     tfidf = TfidfVectorizer(min_df=min_df, max_df=max_df)
-    tfidf_matrix = bag_of_words.fit_transform(tf_iter)
+    tfidf_matrix = tfidf.fit_transform(tf_iter)
 
     # vocabulary
     vocab = tfidf.get_feature_names()
@@ -49,13 +44,28 @@ def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
                          i in range(len(file_paths))}
 
     # save data
-    save_sparse_csr(output_dir + 'tfidf_matrix', bow_matrix)
+    save_sparse_csr(output_dir + 'tfidf_matrix', tfidf_matrix)
 
     with open(output_dir + 'op_id_to_bow_id.p', 'wb') as fp:
-        pickle.dump(op_id_to_bow_id, fp)
+        pickle.dump(op_id_to_tfidf_id, fp)
 
     with open(output_dir + 'vocab.p', 'wb') as fp:
         pickle.dump(vocab, fp)
+
+
+def load_tf_idf(nlp_dir):
+    """
+    tfidf_matrix, op_id_to_bow_id = load_tf_idf(nlp_dir)
+    """
+    tfidf_matrix = load_sparse_csr(nlp_dir + 'tfidf_matrix.npz')
+
+    with open(nlp_dir + 'op_id_to_bow_id.p', 'rb') as f:
+        op_id_to_bow_id = pickle.load(f)
+
+    with open(nlp_dir + 'vocab.p', 'rb') as f:
+        vocab = pickle.load(f)
+
+    return tfidf_matrix, op_id_to_bow_id # , vocab
 
 
 def make_bag_of_words(text_dir, min_df=0, max_df=1):

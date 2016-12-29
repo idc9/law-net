@@ -11,7 +11,7 @@ from get_edge_data import *
 
 
 def get_test_case_scores_LR(G, test_cases, snapshots_dict,
-                            similarity_matrix, CLid_to_index,
+                            tfidf_matrix, op_id_to_bow_id,
                             LogReg, columns_to_use, metric_normalization,
                             print_progress=False):
     """
@@ -32,17 +32,17 @@ def get_test_case_scores_LR(G, test_cases, snapshots_dict,
                 current_time = datetime.now().strftime('%H:%M:%S')
                 print '(%d/%d) at %s' % (i, len(test_cases), current_time)
 
-        score = get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
-                             CLid_to_index, LogReg, columns_to_use,
-                             metric_normalization)
+        score = get_score_LR(G, test_case, snapshots_dict,
+                             tfidf_matrix, op_id_to_bow_id,
+                             LogReg, columns_to_use, metric_normalization)
 
         scores[test_case['name']] = score
 
     return scores
 
 
-def get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
-                 CLid_to_index, LogReg, columns_to_use, metric_normalization):
+def get_score_LR(G, test_case, snapshots_dict, tfidf_matrix, op_id_to_bow_id,
+                 LogReg, columns_to_use, metric_normalization):
     """
     Gets the rank score for a given test case
     """
@@ -66,7 +66,7 @@ def get_score_LR(G, test_case, snapshots_dict, similarity_matrix,
 
     # grab edge data
     edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use,
-                              similarity_matrix, CLid_to_index,
+                              tfidf_matrix, op_id_to_bow_id,
                               metric_normalization, edge_status=None)
 
     # case rankings (CL ids)
@@ -160,33 +160,6 @@ def get_cited_cases(G, citing_vertex):
     # only return cited cases whose year is stictly less than citing year
     return [G.vs[ig_id]['name'] for ig_id in all_citations
             if G.vs[ig_id]['year'] < citing_vertex['year']]
-
-
-def get_case_ranking_by_metric(edge_data, metric):
-    """
-    Sorts cases by a given metric
-
-    Parameters
-    ----------
-    edge_data: edge data frame
-
-    metric: a single column from edge_data
-
-    Output
-    ------
-    CL ids of ranked cases
-    """
-
-    # larger value of metric is means more likely to be cited
-    large_is_good = True
-    ascending = (not large_is_good)
-
-    # sort edges by metric
-    sored_edges = edge_data.sort_values(by=metric,
-                                        ascending=ascending).index.tolist()
-
-    # return cited case
-    return np.array([e.split('_')[1] for e in sored_edges])
 
 
 def get_case_ranking_logreg(edge_data, LogReg, columns_to_use):

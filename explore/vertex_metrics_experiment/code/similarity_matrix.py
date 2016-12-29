@@ -109,4 +109,7 @@ def compute_similarities(tfidf_matrix, CLid_pair, CLid_to_index):
 
     CLid_to_index: dict that maps CL ids to similarity_matrix indices
     """
-    return [compute_similarity(tfidf_matrix, pair, CLid_to_index) for pair in CLid_pair]
+    # return [compute_similarity(tfidf_matrix, pair, CLid_to_index) for pair in CLid_pair]
+    return [cosine_similarity(tfidf_matrix[CLid_to_index[pair[0]], :],
+                              tfidf_matrix[CLid_to_index[pair[1]], :])
+            for pair in CLid_pair]

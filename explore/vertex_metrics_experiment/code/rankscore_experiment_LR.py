@@ -9,12 +9,77 @@ from compute_ranking_metrics import *
 from pipeline_helper_functions import *
 from similarity_matrix import *
 from attachment_model_inference import *
+from bag_of_words import *
 
 
-def get_individual_rankscores_LR(G, test_params, metrics,
-                                 include_similarity, experiment_data_dir,
-                                 metric_normalization=None,
-                                 print_progress=True):
+def get_rankscores_LR(G, test_params, metrics,
+                      include_similarity, experiment_data_dir,
+                      metric_normalization=None,
+                      print_progress=True):
+    """
+    Computes rank scores for each metric individually in metrics list
+    """
+
+    # sample test cases
+    test_cases = get_test_cases(G,
+                                test_params['active_years'],
+                                test_params['num_test_cases'],
+                                test_params['seed'])
+
+    # load snapshots
+    snapshots_dict = load_snapshots(experiment_data_dir)
+
+    # mabye load the similarities
+    if include_similarity:
+        tfidf_matrix, op_id_to_bow_id = load_tf_idf(experiment_data_dir + 'nlp/')
+    else:
+        tfidf_matrix = None
+        op_id_to_bow_id = None
+
+    # load edge data for all edges
+    all_edge_data = pd.read_csv(experiment_data_dir + 'edge_data.csv',
+                                index_col=0)
+
+    # ranking scores for each test case
+    scores = pd.DataFrame(index=[c['name'] for c in test_cases],
+                          columns=metrics)
+
+    # get scores for each metric
+    for metric in metrics:
+
+        if print_progress:
+            print metric
+
+        # either all metrics or individual metric
+        if metric == 'all':
+            columns_to_use = metrics
+            columns_to_use.remove('all')
+        else:
+            columns_to_use = [metric]
+
+        # wether or not to include similarity in the logistic regression
+        if include_similarity and metric != 'similarity':
+            columns_to_use.append('similarity')
+
+        # fit logistic regression
+        LogReg = fit_logistic_regression(all_edge_data, columns_to_use)
+
+        # compute scores on test cases
+        testcase_scores = get_test_case_scores_LR(G, test_cases, snapshots_dict,
+                                                  tfidf_matrix, op_id_to_bow_id,
+                                                  LogReg, columns_to_use,
+                                                  metric_normalization,
+                                                  print_progress)
+
+        scores[metric] = testcase_scores
+
+    return scores
+
+
+def get_rankscores(G, test_params, metrics,
+                   experiment_data_dir,
+                   metric_normalization=None,
+                   print_progress=True):
     """
     Computes rank scores for each metric individually in metrics list
     """
@@ -65,7 +130,7 @@ def get_individual_rankscores_LR(G, test_params, metrics,
 
         # compute scores on test cases
         testcase_scores = get_test_case_scores_LR(G, test_cases, snapshots_dict,
-                                                  similarity_matrix, CLid_to_index,
+                                                  tfidf_matrix, op_id_to_bow_id,
                                                   LogReg, columns_to_use,
                                                   metric_normalization,
                                                   print_progress)
