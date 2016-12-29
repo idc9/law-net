@@ -7,30 +7,12 @@ What can we learn by applied network analysis to the law? This project contains 
 
 Note that 'entire' does not actually mean we have every court case. We are still figuring out how good our coverage is and will post updates when we have more.
 
-To load the SCOTUS citation network (if cwd is explore/)
+To get started with the data see [getting_started.ipynb](https://github.com/idc9/law-net/blob/master/getting_started.ipynb). User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon.
 
-```
-import networkx as nx
-import pandas as pd
+We are not storing the data (edgelist, vertex metadata, etc) on github since these are several hundred megabyte files. You can use our code to download the data or you can as [Iain](iain@unc.edu) to send you the .csv files which might save you waiting a few hours for the data to download. In the future we will have a better solution for this...
 
-from load data import load_citation_network
+If you are interested in collaborating feel free to reach out to us!
 
-data_dir = '../data/'
-
-network = load_citation_network(data_dir, 'scotus')
-```
-
-To load the jurisdiction network
-```
-import networkx as nx
-import pandas as pd
-
-from load data import load_jurisdiction_network
-
-data_dir = '../data/'
-
-network = load_jurisdiction_network(data_dir)
-```
 
 This is a collaboration between
 

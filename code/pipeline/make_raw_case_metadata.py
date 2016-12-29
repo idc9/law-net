@@ -3,8 +3,10 @@ import json
 import datetime
 import time
 import shutil
+import re
 
 import pandas as pd
+import numpy as np
 
 from download_data import download_bulk_resource
 
@@ -41,10 +43,12 @@ def make_raw_case_metadata_master(data_dir, remove=True):
     #         nc_courts.append(court)
 
     start = time.time()
+
+    # start with scotus scotus
     metadata = get_raw_case_metadata_from_court(all_courts[0],
                                                 data_dir,
                                                 remove=remove)
-
+    # append all other courts
     for court in all_courts[1:]:
         court_data = get_raw_case_metadata_from_court(court,
                                                       data_dir,
@@ -65,7 +69,7 @@ def make_raw_case_metadata_master(data_dir, remove=True):
                 os.rmdir(court_dir)
 
 
-def make_raw_case_metadata_court(court_name, data_dir, remove=True):
+def make_raw_case_metadata_court(court_name, data_dir):
     """
     Creates the node_metadata.csv file for a given court. Note that if the
     node_metadata.csv file already exists it will be overwritten.
@@ -76,27 +80,28 @@ def make_raw_case_metadata_court(court_name, data_dir, remove=True):
 
     data_dir: path to data directory
 
-    clean: if True will place file in data/clean/court_name/network folder
-    otherwise will place file in data/raw/court_name/network folder
-
     remove: if true will remove .json files
     """
 
     metadata = get_raw_case_metadata_from_court(court_name, data_dir, remove)
 
-    network_path = data_dir + 'raw/' + court_name + '/network/'
-    file_name = 'case_metadata_r.csv'
+    court_path = data_dir + 'raw/%s/' % court_name
+    md_path = court_path + 'case_metadata_r.csv'
 
-    if not os.path.exists(network_path):
-        os.makedirs(network_path)
+    # check if court folder exists
+    if os.path.exists(court_path):
+
+        # if the medtadata is already there kill it
+        if os.path.isfile(md_path):
+            os.remove(md_path)
     else:
-        if os.path.isfile(network_path + file_name):
-            os.remove(network_path + file_name)
+        # make court folder if it doesn't exist
+        os.makedirs(court_path)
 
-    metadata.to_csv(network_path + file_name)
+    metadata.to_csv(md_path)
 
 
-def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
+def get_raw_case_metadata_from_court(court_name, data_dir):
     """
     Returns a pandas DatFrame that has the case metadata for each case in
     the given court. Will download json files if they are not already on
@@ -115,9 +120,8 @@ def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
     ------
     Returns a pandas DataFrame
     """
-
-    cluster_dir = data_dir + 'raw/%s/cases/clusters/' % court_name
-    opinion_dir = data_dir + 'raw/%s/cases/opinions/' % court_name
+    cluster_dir = data_dir + 'raw/%s/clusters/' % court_name
+    opinion_dir = data_dir + 'raw/%s/opinions/' % court_name
 
     clusters_already_exist = os.path.exists(cluster_dir)
     opinions_already_exist = os.path.exists(opinion_dir)
@@ -125,78 +129,60 @@ def get_raw_case_metadata_from_court(court_name, data_dir, remove=True):
     # download cases if they are not already on local computer
     if not clusters_already_exist:
         os.makedirs(cluster_dir)
-
-        # grab cluster files
-        start = time.time()
         download_bulk_resource(court_name, 'clusters', data_dir)
-        end = time.time()
-        print '%s clusters download took %d seconds' % \
-              (court_name, end - start)
-        print
+
+    # download cases if they are not already on local computer
+    if not opinions_already_exist:
+        os.makedirs(opinion_dir)
+        download_bulk_resource(court_name, 'opinions', data_dir)
 
     # all cluster and opinion files
-    clusters = os.listdir(cluster_dir)
-    # opinions = os.listdir(opinion_dir)
+    cluster_files = os.listdir(cluster_dir)
+    opinion_files = os.listdir(opinion_dir)
 
-    # opinion_no_cluster = set(opinions).difference(set(clusters))
-    # cluster_no_opinion = set(clusters).difference(set(opinions))
-    # all_cases = [c.split('.')[0] for c in set(opinions).union(set(clusters))]
-    all_cases = [c.split('.')[0] for c in clusters]
-    # print '%s cluster files, %s opinion %s files detected.' % \
-    #       (len(clusters), len(opinions), court_name)
+    # dicitonary mapping opinion ids to cluster ids
+    op_to_cl = get_opinion_to_cluster_dict(data_dir, court_name)
 
-    # if set(clusters) != set(opinions):
-    #     print 'WARNING %s cluster and opinion files not equal' % court_name
-    #     print '%d cases with opinion but no cluster' %len(opinion_no_cluster)
-    #     print '%d cases with cluster but no opinion' %len(cluster_no_opinion)
-    #     print '%d cases in total' % len(all_cases)
-    #     print
-
-    # cols = ['date', 'court', 'name', 'judges', 'has_opinion', 'has_cluster',
-    #         'cl_modified', 'op_modified']
-
-    cols = ['date', 'court', 'name', 'judges', 'cl_modified']
-    metadata = pd.DataFrame(index=all_cases, columns=cols)
+    # initialize data frame
+    df_cols = ['date', 'court', 'name', 'judges', 'scdb_id', 'term']
+    metadata = pd.DataFrame(index=op_to_cl.keys(),
+                            columns=df_cols)
     metadata.index.name = 'id'
-    # metadata.has_cluster.fillna(value=False, inplace=True)
-    # metadata.has_opinion.fillna(value=False, inplace=True)
 
-    print 'scraping clusters....'
-    start = time.time()
-    for cl_file in clusters:
-        case_id = cl_file.split('.')[0]
+    # get metadata for each opinion
+    for op_id in op_to_cl.keys():
 
-        cl_data = get_cluster_data(path=cluster_dir + cl_file)
+        # get cluster id
+        cl_id = op_to_cl[op_id]
 
-        metadata.loc[case_id, 'date'] = cl_data['date']
-        metadata.loc[case_id, 'court'] = court_name
-        metadata.loc[case_id, 'name'] = cl_data['name']
-        metadata.loc[case_id, 'judges'] = cl_data['judges']
-        # metadata.loc[case_id, 'has_cluster'] = True
-        metadata.loc[case_id, 'cl_modified'] = cl_data['cl_modified']
-    end = time.time()
+        # metadata from cluster file
+        cl_data = get_cluster_data(path=cluster_dir + cl_id + '.json')
 
-    print 'scraping the %s clusters took %d seconds' % (court_name, end-start)
-    print
+        # add row to data frame
+        metadata.loc[op_id, 'date'] = cl_data['date']
+        metadata.loc[op_id, 'court'] = court_name
+        metadata.loc[op_id, 'name'] = cl_data['name']
+        metadata.loc[op_id, 'judges'] = cl_data['judges']
+        metadata.loc[op_id, 'scdb_id'] = cl_data['scdb_id']
+        metadata.loc[op_id, 'term'] = cl_data['term']
 
-    # print 'scraping opinions....'
-    # start = time.time()
-    # for op_file in opinions:
-    #     case_id = op_file.split('.')[0]
-    #
-    #     op_data = get_opinion_data(path=opinion_dir + op_file)
-    #
-    #     metadata.loc[case_id, 'has_opinion'] = True
-    #     metadata.loc[case_id, 'op_modified'] = op_data['op_modified']
-    #
-    # end = time.time()
-    # print 'scraping the %s opinions took %d seconds' % \
-    #        (court_name, end-start)
-    # print
+    # which columns to include from SCDB
+    scdb_cols = ['issueArea', 'decisionDirection', 'majVotes', 'minVotes']
+    if court_name == 'scotus':
 
-    if remove and not clusters_already_exist:
-        case_dir = data_dir + 'raw/%s/cases/' % court_name
-        remove_folder(case_dir)
+        # load scdb data frames
+        scdb_modern = pd.read_csv(data_dir + 'scdb/SCDB_2016_01_caseCentered_Citation.csv', index_col=0)
+        scdb_legacy = pd.read_csv(data_dir + 'scdb/SCDB_Legacy_03_caseCentered_Citation.csv', index_col=0)
+        scdb = scdb_legacy.append(scdb_modern)
+
+        # addd in the desired columns
+        metadata = metadata.merge(scdb[scdb_cols],
+                                  how="left",
+                                  left_on="scdb_id",
+                                  right_index=True)
+    else:
+        for c in scdb_cols:
+            metadata[c] = np.nan
 
     return metadata
 
@@ -213,16 +199,21 @@ def get_cluster_data(path):
     cl_dict = json_to_dict(path)
     data = {}
 
+    # add the case date
     year, month, day = [int(e) for e in cl_dict['date_filed'].rsplit('-')]
     data['date'] = datetime.date(year=year, month=month, day=day)
+
+    # add the term
+    # TODO: ass court name
+    data['term'] = get_term(data['date']) #,court_name
 
     data['name'] = cl_dict['slug'].encode('ascii', 'ignore')
 
     data['judges'] = cl_dict['judges'].encode('ascii', 'ignore')
 
-    year, month, day = [int(e) for e in cl_dict['date_modified'].
-                        rsplit('T')[0].rsplit('-')]
-    data['cl_modified'] = datetime.date(year=year, month=month, day=day)
+    data['scdb_id'] = cl_dict['scdb_id']
+
+
 
     return data
 
@@ -274,3 +265,81 @@ def remove_folder(path):
     if os.path.exists(path):
         # remove if exists
         shutil.rmtree(path)
+
+
+def update_court_metadata_raw(data_dir, court_name):
+    """
+    Updates the master raw case metadata for a jurisdiction
+    """
+
+    md_path = data_dir + 'raw/case_metadata_master_r.csv'
+
+    # load old metadata file
+    case_md = pd.read_csv(md_path, index_col='id')
+
+    # remove old cases
+    case_md = case_md[case_md.court != court_name]
+
+    # get updated case metadata
+    updated_court_md = get_raw_case_metadata_from_court(court_name, data_dir,
+                                                        remove=True)
+
+    # update case metadata file
+    case_md = case_md.append(updated_court_md)
+
+    case_md.to_csv(md_path, index=True)
+
+
+def get_term(date, court_name='scotus'):
+    """
+    Returns the term of a case
+    e.g. 2015-2016 term would be labeled 2015
+
+    Parameters
+    ----------
+    date: the date of the case (datetime date)
+
+    court_name: which jurisdiction
+    """
+    if court_name == 'scotus':
+        cutoff_month = 9
+
+    if date.month <= cutoff_month:
+        term = date.year - 1
+    else:
+        term = date.year
+
+    return term
+
+
+def get_opinion_to_cluster_dict(data_dir, court_name):
+    """
+    Returns a dictionary mapping opinion id to cluster id
+
+    Many opinions to one cluster
+    """
+
+    # directory containing clusters
+    cluster_dir = data_dir + 'raw/%s/clusters/' % court_name
+
+    # cluster ids of all cluster files
+    cl_ids = [c.split('.json')[0] for c in os.listdir(cluster_dir)]
+
+    # dictionary mapping clusters to list of opinions contained in the cluster
+    op_to_cl = {}
+
+    # go through each cluster file
+    for cl_id in cl_ids:
+
+        # dict of cluster json file
+        cl_dict = json_to_dict(cluster_dir + cl_id + '.json')
+
+        # get the list of opinion ids from each cluster file
+        op_ids = [re.search(".+opinions\/(\d+?)\/", s).group(1)
+                  for s in cl_dict['sub_opinions']]
+
+        # create entry in dict for each opinion (op id -> cl id)
+        for op_id in op_ids:
+            op_to_cl[str(op_id)] = cl_id
+
+    return op_to_cl
