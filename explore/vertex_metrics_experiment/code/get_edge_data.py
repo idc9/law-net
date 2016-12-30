@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from pipeline_helper_functions import *
-from similarity_matrix import *
+from bag_of_words import *
 
 # list of possible vertex metrics
 vertex_metrics = ['indegree', 'outdegree', 'degree', 'd_pagerank',
@@ -43,8 +43,8 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
     num_edges = len(edgelist)
 
     # CL ids of ed cases (indexes the snap_df rows)
-    ed_CLids = [G.vs[edge[1]]['name'] for edge in edgelist]
-    ing_CLids = [G.vs[edge[0]]['name'] for edge in edgelist]
+    ed_op_ids = [G.vs[edge[1]]['name'] for edge in edgelist]
+    ing_op_ids = [G.vs[edge[0]]['name'] for edge in edgelist]
 
     # ages
     ed_year = np.array([G.vs[edge[1]]['year'] for edge in edgelist])
@@ -52,7 +52,7 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
 
     # ed metrics in ing year
     # note snapshot_df indices are ints
-    ed_metrics = snapshot_df.loc[[int(i) for i in ed_CLids]]
+    ed_metrics = snapshot_df.loc[[int(i) for i in ed_op_ids]]
 
     # initialize edge data frame
     edge_data = pd.DataFrame()
@@ -73,8 +73,8 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
         elif metric == 'ed_year':
             edge_data[metric] = ed_year
         elif metric == 'similarity':
-            edge_data[metric] = compute_similarities(tfidf_matrix,
-                                                     zip(ing_CLids, ed_CLids),
+            edge_data[metric] = compute_similarities(ing_op_ids, ed_op_ids,
+                                                     tfidf_matrix,
                                                      op_id_to_bow_id)
 
     # possibly normalize metrics
@@ -101,7 +101,7 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
 
         edge_data['is_edge'] = is_edge
 
-    edge_data.index = [str(ing_CLids[i]) + '_' + str(ed_CLids[i])
+    edge_data.index = [str(ing_op_ids[i]) + '_' + str(ed_op_ids[i])
                        for i in range(num_edges)]
     edge_data.index.name = 'CLids'
 

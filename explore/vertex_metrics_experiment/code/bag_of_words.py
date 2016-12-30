@@ -1,9 +1,11 @@
 import numpy as np
+import pandas as pd
 import re
 import glob
 import cPickle as pickle
 
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from make_case_text_files import text_normalization
 from pipeline_helper_functions import save_sparse_csr, load_sparse_csr
@@ -66,6 +68,65 @@ def load_tf_idf(nlp_dir):
         vocab = pickle.load(f)
 
     return tfidf_matrix, op_id_to_bow_id # , vocab
+
+
+def compute_similarities(op_ids_A, op_ids_B,
+                         tfidf_matrix, op_id_to_bow_id):
+    """
+    Computes the similarities between pairs of cases. Function is written
+    to take advantage of sklean's cosine_similarity funcion.
+
+    Parameters
+    ----------
+    op_ids_A, op_ids_B: lists of opinon ids
+
+    tfidf_matrix: precomputed tf-idf matrix
+
+    op_id_to_bow_id: maps opinion id to tf-idf matrx index
+
+    Output
+    ------
+    list of similarities
+    """
+    if len(op_ids_A) != len(op_ids_B):
+        raise ValueError('lists not same length')
+
+    # the left list is the shorter of the two lists
+    if len(set(op_ids_A)) < len(set(op_ids_B)):
+        left = op_ids_A
+        right = op_ids_B
+    else:
+        left = op_ids_B
+        right = op_ids_A
+
+    # Series indexed by case pairs holding the computed similarities
+    similarities = pd.Series(0, index=zip(left, right))
+
+    # dictionary mapping one left document to every corresponding right document
+    left_to_right = {op_id: [] for op_id in set(left)}
+    for i in range(len(left)):
+        left_to_right[left[i]].append(right[i])
+
+    # for each left case compute the similarities for each right case
+    for l in left_to_right.keys():
+
+        # right cases corresponding to left case
+        R = left_to_right[l]
+
+        # X is a single vector
+        X = tfidf_matrix[op_id_to_bow_id[l], :]
+
+        # Y a matrix (rows corresponding to right cases)
+        Y = tfidf_matrix[[op_id_to_bow_id[r] for r in R], :]
+
+        # use scipy to cmpute the cosine similarities
+        sims = cosine_similarity(X, Y)[0]
+
+        # update similarity Series
+        pairs_to_add = zip([l]*len(R) , R)
+        similarities[pairs_to_add] = sims
+
+    return similarities.tolist()
 
 
 def make_bag_of_words(text_dir, min_df=0, max_df=1):

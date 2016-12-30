@@ -6,7 +6,6 @@ from math import *
 from datetime import datetime
 
 from pipeline_helper_functions import *
-from similarity_matrix import *
 from get_edge_data import *
 
 

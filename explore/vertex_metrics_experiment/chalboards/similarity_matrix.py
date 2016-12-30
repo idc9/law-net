@@ -81,7 +81,6 @@ def get_similarities(similarity_matrix, CLid_pair, CLid_to_index):
     """
     return [get_similarity(similarity_matrix, pair, CLid_to_index) for pair in CLid_pair]
 
-
 def compute_similarity(tfidf_matrix, CLid_pairs, CLid_to_index):
     """
     Workhorse helper function for compute_similarities

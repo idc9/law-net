@@ -5,7 +5,6 @@ import copy
 import os
 
 from pipeline_helper_functions import *
-from similarity_matrix import *
 from get_edge_data import *
 from bag_of_words import *
 

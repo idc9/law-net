@@ -7,7 +7,6 @@ from datetime import datetime
 
 from experiment_helper_functions import *
 from pipeline_helper_functions import *
-from similarity_matrix import *
 from attachment_model_inference import *
 from bag_of_words import *
 
