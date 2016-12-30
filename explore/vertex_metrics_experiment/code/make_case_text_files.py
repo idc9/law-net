@@ -7,7 +7,9 @@ import nltk
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
 
+from bag_of_words import text_normalization
 from pipeline.download_data import json_to_dict
+from text_normalization import text_normalization
 
 
 def make_text_files(data_dir, court_name, network_name=None,
@@ -73,86 +75,6 @@ def make_text_files(data_dir, court_name, network_name=None,
             # text_file.write(text)
             # unicode makes me want to cry sometimes
             text_file.write(text.encode("UTF-8"))
-
-
-def text_normalization(text, stop_words=None, stemmer=None):
-    """
-    Normalizes a text file
-    - remove non-letters
-    - lower case words
-    - stem words
-    - remove stop words
-
-    Parameters
-    ----------
-    text: string to normalize
-
-    stop_words: list of stop words to kill (optional)
-
-    stemmer: a stemmer fuction from NLTK
-
-    Output
-    ------
-    the normalized string
-    """
-    # lowers = text.lower()
-    # return lowers.translate(None, string.punctuation)
-
-    # Remove non-letters
-    letters_only = re.sub("[^a-zA-Z]", " ", text)
-
-    # Convert to lower case, split into individual words
-    words = letters_only.lower().split()
-
-    # stem words
-    if stemmer:
-        words = [stemmer.stem(w) for w in words]
-
-        # stem the stop words
-        if stop_words:
-            stop_words = [stemmer.stem(w) for w in stop_words]
-
-    # remove stop words
-    if stop_words:
-        stop_words = set(stop_words)  # set is faster
-        words = [w for w in words if w not in stop_words]
-
-    # join the words back into one string separated by space
-    return " ".join(words)
-
-
-def get_normalized_text_dict(subnet_dir):
-    """
-    Normalizes each text file in the corpus and puts them into a dict
-
-    Output
-    ------
-    dict with CL ids as keys and strings as values
-    """
-
-    # CL ids of all cases
-    input_path = subnet_dir + 'textfiles/'
-    text_files = glob.glob(input_path + "*.txt")
-    CLids = set([re.findall('\d+', f)[0] for f in text_files])
-
-    # which stemmer to use
-    stemmer = PorterStemmer()
-
-    # stop words
-    stop_words = stopwords.words("english")
-
-    normalized_text_dict = {}
-    for clid in CLids:
-
-        # open text file
-        file_path = input_path + clid + '.txt'
-        textfile = open(file_path, 'r')
-        text = textfile.read()
-
-        # intitial text normalization and save in dict
-        normalized_text_dict[clid] = text_normalization(text)
-
-    return normalized_text_dict
 
 
 def get_text_from_json(json_file):

@@ -10,6 +10,8 @@ vertex_metrics = ['indegree', 'outdegree', 'degree', 'd_pagerank',
                   'd_betweenness', 'u_betweenness', 'authorities',
                   'hubs', 'd_eigen', 'u_eigen']
 
+vertex_metrics += ['recentcite_' + str(t) for t in np.arange(100+1)]
+
 
 def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
                   tfidf_matrix=None, op_id_to_bow_id=None,
@@ -46,23 +48,24 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
     ed_op_ids = [G.vs[edge[1]]['name'] for edge in edgelist]
     ing_op_ids = [G.vs[edge[0]]['name'] for edge in edgelist]
 
-    # ages
+    # case dates
     ed_year = np.array([G.vs[edge[1]]['year'] for edge in edgelist])
     ing_year = np.array([G.vs[edge[0]]['year'] for edge in edgelist])
 
-    # ed metrics in ing year
+    # ed metrics in ing year ordered by ed_op_ids
     # note snapshot_df indices are ints
     ed_metrics = snapshot_df.loc[[int(i) for i in ed_op_ids]]
 
     # initialize edge data frame
     edge_data = pd.DataFrame()
+    # index = zip(ing_op_ids, ed_op_ids)
 
     # add columns to edge data frame
     for metric in columns_to_use:
 
         # which vertex metrics from the snapshot df to grab
         # i.e. only grab vertex metric columns
-        vertex_metrics_to_use = set(ed_metrics.columns).intersection(vertex_metrics)
+        vertex_metrics_to_use = set(ed_metrics.columns).difference('year')
 
         if metric in vertex_metrics_to_use:
             edge_data[metric] = ed_metrics[metric].tolist()
@@ -103,7 +106,7 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
 
     edge_data.index = [str(ing_op_ids[i]) + '_' + str(ed_op_ids[i])
                        for i in range(num_edges)]
-    edge_data.index.name = 'CLids'
+    edge_data.index.name = 'CLids' # op_id
 
     return edge_data
 

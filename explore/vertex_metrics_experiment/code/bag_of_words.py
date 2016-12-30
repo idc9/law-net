@@ -7,7 +7,9 @@ import cPickle as pickle
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from make_case_text_files import text_normalization
+from nltk.stem.porter import PorterStemmer
+from nltk.corpus import stopwords
+from text_normalization import *
 from pipeline_helper_functions import save_sparse_csr, load_sparse_csr
 
 
@@ -31,19 +33,27 @@ def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
     # text files
     file_paths = glob.glob(text_dir + '*.txt')
 
-    # iterator over textfiles
-    tf_iter = textfile_iter(file_paths)
+    # for text normalization
+    stemmer = PorterStemmer()
+    stop_words = stopwords.words("english")
 
-    # compute bag of words
+    # iterator over textfiles
+    tf_iter = textfile_iter(file_paths, stop_words, stemmer)
+
+    # compute tf-idf
     tfidf = TfidfVectorizer(min_df=min_df, max_df=max_df)
-    tfidf_matrix = tfidf.fit_transform(tf_iter)
+    # tfidf_matrix = tfidf.fit_transform(tf_iter)
+
+    text_dict = get_normalized_text_dict(text_dir)
+    tfidf_matrix = tfidf.fit_transform(text_dict.values())
 
     # vocabulary
     vocab = tfidf.get_feature_names()
 
     # map from CL opinion ids to bow matix index
-    op_id_to_tfidf_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
-                         i in range(len(file_paths))}
+    # op_id_to_tfidf_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
+    #                      i in range(len(file_paths))}
+    op_id_to_bow_id = {text_dict.keys()[i]: i for i in range(len(file_paths))}
 
     # save data
     save_sparse_csr(output_dir + 'tfidf_matrix', tfidf_matrix)
@@ -68,6 +78,100 @@ def load_tf_idf(nlp_dir):
         vocab = pickle.load(f)
 
     return tfidf_matrix, op_id_to_bow_id # , vocab
+
+
+def make_bag_of_words(text_dir, min_df=0, max_df=1):
+    """
+    computes the td-idf matrix of a corpus
+
+    Paramters
+    ---------
+    text_dir: directory containing text files
+
+    Output
+    ------
+    bow_matrix: CSR matrix containing the TD counts
+
+    vocab: list of the vocabulary (ordered by the dict keys)
+
+    op_id_to_bow_id: maps CL opinion id to bag of words index (dict)
+
+    # to load
+    bow_matrix_matrix =
+    load_sparse_csr(subnet_dir + 'bag_of_words_matrix')
+
+    with open(subnet_dir + 'op_id_to_bow_id.p', 'rb') as f:
+        op_id_to_bow_id = pickle.load(f)
+
+    with open(subnet_dir + 'vocab.p', 'rb') as f:
+        vocab = pickle.load(f)
+
+    """
+
+    # text files
+    file_paths = glob.glob(text_dir + '*.txt')
+
+    # for text normalization
+    stemmer = PorterStemmer()
+    stop_words = stopwords.words("english")
+
+    # iterator over textfiles
+    tf_iter = textfile_iter(file_paths, stop_words, stemmer)
+
+    # compute bag of words
+    bag_of_words = CountVectorizer(min_df=min_df, max_df=max_df)
+    # bow_matrix = bag_of_words.fit_transform(tf_iter)
+    text_dict = get_normalized_text_dict(text_dir)
+
+    bow_matrix = bag_of_words.fit_transform(text_dict.values())
+    # vocabulary
+    vocab = bag_of_words.get_feature_names()
+
+    # map from CL opinion ids to bow matix index
+    # op_id_to_bow_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
+    #                    i in range(len(file_paths))}
+
+    op_id_to_bow_id = {text_dict.keys()[i]: i for i in range(len(file_paths))}
+
+    # save data
+    save_sparse_csr(subnet_dir + 'bag_of_words_matrix', bow_matrix)
+
+    with open(subnet_dir + 'op_id_to_bow_id.p', 'wb') as fp:
+        pickle.dump(op_id_to_bow_id, fp)
+
+    with open(subnet_dir + 'vocab.p', 'wb') as fp:
+        pickle.dump(vocab, fp)
+
+
+class textfile_iter:
+    """
+    Iterator that returns a cleaned textfile given a list of paths
+    """
+    def __init__(self, paths, stop_words=None, stemmer=None):
+        self.i = 0
+
+        # if there is only one file
+        if type(paths) == str:
+            paths = [paths]
+
+        self.paths = paths
+        self.num_files = len(paths)
+
+        self.stop_words = stop_words
+        self.stemmer = stemmer
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.i < self.num_files:
+            text = open(self.paths[self.i], 'r').read()
+            self.i += 1
+
+            return text_normalization(text, self.stop_words, self.stemmer)
+
+        else:
+            raise StopIteration()
 
 
 def compute_similarities(op_ids_A, op_ids_B,
@@ -102,7 +206,7 @@ def compute_similarities(op_ids_A, op_ids_B,
     # Series indexed by case pairs holding the computed similarities
     similarities = pd.Series(0, index=zip(left, right))
 
-    # dictionary mapping one left document to every corresponding right document
+    # dictionary mapping one left document to corresponding right documents
     left_to_right = {op_id: [] for op_id in set(left)}
     for i in range(len(left)):
         left_to_right[left[i]].append(right[i])
@@ -127,81 +231,3 @@ def compute_similarities(op_ids_A, op_ids_B,
         similarities[pairs_to_add] = sims
 
     return similarities.tolist()
-
-
-def make_bag_of_words(text_dir, min_df=0, max_df=1):
-    """
-    computes the td-idf matrix of a corpus
-
-    Paramters
-    ---------
-    text_dir: directory containing text files
-
-    Output
-    ------
-    bow_matrix: CSR matrix containing the TD counts
-
-    vocab: list of the vocabulary (ordered by the dict keys)
-
-    op_id_to_bow_id: maps CL opinion id to bag of words index (dict)
-
-    # to load
-    bow_matrix_matrix =
-    load_sparse_csr(subnet_dir + 'bag_of_words_matrix')
-
-    with open(subnet_dir + 'op_id_to_bow_id.p', 'rb') as f:
-        op_id_to_bow_id = pickle.load(f)
-
-    with open(subnet_dir + 'vocab.p', 'rb') as f:
-        vocab = pickle.load(f)
-
-    """
-
-    # text files
-    file_paths = glob.glob(text_dir + '*.txt')
-
-    # iterator over textfiles
-    tf_iter = textfile_iter(file_paths)
-
-    # compute bag of words
-    bag_of_words = CountVectorizer(min_df=min_df, max_df=max_df)
-    bow_matrix = bag_of_words.fit_transform(tf_iter)
-
-    # vocabulary
-    vocab = bag_of_words.get_feature_names()
-
-    # map from CL opinion ids to bow matix index
-    op_id_to_bow_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
-                       i in range(len(file_paths))}
-
-    # save data
-    save_sparse_csr(subnet_dir + 'bag_of_words_matrix', bow_matrix)
-
-    with open(subnet_dir + 'op_id_to_bow_id.p', 'wb') as fp:
-        pickle.dump(op_id_to_bow_id, fp)
-
-    with open(subnet_dir + 'vocab.p', 'wb') as fp:
-        pickle.dump(vocab, fp)
-
-
-class textfile_iter:
-    """
-    Iterator that returns a cleaned textfile given a list of paths
-    """
-    def __init__(self, paths):
-        self.i = 0
-        self.paths = paths
-        self.num_files = len(paths)
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        if self.i < self.num_files:
-            text = open(self.paths[self.i], 'r').read()
-            self.i += 1
-
-            return text_normalization(text)
-
-        else:
-            raise StopIteration()

@@ -9,9 +9,9 @@ from get_edge_data import *
 from bag_of_words import *
 
 
-def make_edge_df(G, subnet_dir, active_years,
-                 num_non_edges_to_add, columns_to_use,
-                 metric_normalization=None, seed=None):
+def make_tr_edge_df(G, subnet_dir, active_years,
+                    num_absent_edges, metrics,
+                    metric_normalization=None, seed=None):
     """
     Creates the edge data frame
 
@@ -23,9 +23,9 @@ def make_edge_df(G, subnet_dir, active_years,
 
     active_years:
 
-    num_non_edges_to_add:
+    num_absent_edges:
 
-    columns_to_use:
+    metrics:
 
     seed:
     """
@@ -35,17 +35,14 @@ def make_edge_df(G, subnet_dir, active_years,
     if len(snapshots_dict) == 0:
         raise ValueError('failed ot load snapshots train')
 
-    # mabye load the similarities
-    if 'similarity' in columns_to_use:
-        tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
-    else:
-        tfidf_matrix = None
-        op_id_to_bow_id = None
+    # load tfidf matrix
+    tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
+    metrics = copy.deepcopy(metrics)
+    metrics.append('similarity')
 
     # initialize edge data frame
-    colnames = copy.deepcopy(columns_to_use)
+    colnames = copy.deepcopy(metrics)
     colnames.append('is_edge')
-    colnames.remove('year')
     edge_data = pd.DataFrame(columns=colnames)
 
     # get all present edges
@@ -65,7 +62,7 @@ def make_edge_df(G, subnet_dir, active_years,
         edges = edge_dict[snapshot_year]
 
         # get snapshot year edge data frame
-        sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
+        sn_edge_data = get_edge_data(G, edges, snapshot_df, metrics,
                                      tfidf_matrix, op_id_to_bow_id,
                                      metric_normalization,
                                      edge_status='present')
@@ -73,7 +70,7 @@ def make_edge_df(G, subnet_dir, active_years,
         edge_data = edge_data.append(sn_edge_data)
 
     # get a sample of non-present edges
-    absent_edgelist = sample_absent_edges(G, num_non_edges_to_add,
+    absent_edgelist = sample_absent_edges(G, num_absent_edges,
                                           active_years, seed=seed)
 
     # organize edges by ing snapshot year
@@ -91,7 +88,7 @@ def make_edge_df(G, subnet_dir, active_years,
         edges = edge_dict[snapshot_year]
 
         # get edge data frame for snapshot year
-        sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_use,
+        sn_edge_data = get_edge_data(G, edges, snapshot_df, metrics,
                                      tfidf_matrix, op_id_to_bow_id,
                                      edge_status='absent')
 
@@ -100,7 +97,7 @@ def make_edge_df(G, subnet_dir, active_years,
     edge_data.to_csv(subnet_dir + 'edge_data.csv')
 
 
-def update_edge_df(G, subnet_dir, active_years, columns_to_add,
+def update_edge_df(G, subnet_dir, active_years, metrics_to_add,
                    metric_normalization=None):
     """
     Adds new columns to edge_data frame
@@ -119,7 +116,7 @@ def update_edge_df(G, subnet_dir, active_years, columns_to_add,
         raise ValueError('cant find edge data')
 
     # mabye load the similarities
-    if 'similarity' in columns_to_add:
+    if 'similarity' in metrics_to_add:
         tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
     else:
         tfidf_matrix = None
@@ -127,13 +124,14 @@ def update_edge_df(G, subnet_dir, active_years, columns_to_add,
 
     # get edges that are in edge_data then convert them to igraph indices
     edgelist_CLid = [get_edges_from_str(e) for e in edge_data.index]
-    edgelist = [CLid_edge_to_IGid(G, e) for e in edgelist_CLid]
+    # edgelist_CLid = [e[1] for e in edge_data.index]
+    edgelist = [edge_op_to_ig(G, e) for e in edgelist_CLid]
 
     # organize edges by ing snapshot year
     edge_dict = get_edges_by_snapshot_dict(G, edgelist, active_years)
 
     # initialize temp dataframe
-    edge_data_to_add = pd.DataFrame(columns=columns_to_add)
+    edge_data_to_add = pd.DataFrame(columns=metrics_to_add)
 
     # add present edge data
     for year in active_years:
@@ -145,14 +143,14 @@ def update_edge_df(G, subnet_dir, active_years, columns_to_add,
         edges = edge_dict[snapshot_year]
 
         # get snapshot year edge data frame
-        sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_add,
+        sn_edge_data = get_edge_data(G, edges, snapshot_df, metrics_to_add,
                                      tfidf_matrix, op_id_to_bow_id,
                                      metric_normalization, edge_status=None)
 
         edge_data_to_add = edge_data_to_add.append(sn_edge_data)
 
     # add new columns
-    edge_data[columns_to_add] = edge_data_to_add
+    edge_data[metrics_to_add] = edge_data_to_add
 
     # save updated edge dataframe
     edge_data.to_csv(edge_data_path)
@@ -167,7 +165,7 @@ def get_edges_from_str(s):
     return split[0], split[1]
 
 
-def CLid_edge_to_IGid(G, edge):
+def edge_op_to_ig(G, edge):
     """
     Returns the igraph indices for an edge from their CL ids
     """

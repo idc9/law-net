@@ -63,14 +63,14 @@ def get_test_case_scores_sort(G, test_cases, snapshots_dict, metric, print_progr
                 current_time = datetime.now().strftime('%H:%M:%S')
                 print '(%d/%d) at %s' % (i, len(test_cases), current_time)
 
-        score = get_score_sort(G, test_case, snapshots_dict, metric)
+        score = get_rankscore_sort(G, test_case, snapshots_dict, metric)
 
         scores[test_case['name']] = score
 
     return scores
 
 
-def get_score_sort(G, test_case, snapshots_dict, metric):
+def get_rankscore_sort(G, test_case, snapshots_dict, metric):
     """
     Gets the rank score for a given test case
     """
@@ -98,8 +98,7 @@ def get_score_sort(G, test_case, snapshots_dict, metric):
                               metric_normalization=None, edge_status=None)
 
     # case rankings (CL ids)
-    edge_data['rand'] = np.random.uniform(size=edge_data.shape[0])
-    ancestor_ranking = get_case_ranking_by_metric(edge_data, metric='rand')
+    ancestor_ranking = ranking_by_metric_sort(edge_data, metric)
 
     # compute rank score
     score = score_ranking(cited_cases, ancestor_ranking)
@@ -107,7 +106,7 @@ def get_score_sort(G, test_case, snapshots_dict, metric):
     return score
 
 
-def get_case_ranking_by_metric(edge_data, metric):
+def ranking_by_metric_sort(edge_data, metric):
     """
     Sorts cases by a given metric
     Parameters
@@ -120,7 +119,10 @@ def get_case_ranking_by_metric(edge_data, metric):
     """
 
     # larger value of metric is means more likely to be cited
-    large_is_good = True
+    if metric in ['age']:
+        large_is_good = False
+    else:
+        large_is_good = True
     ascending = (not large_is_good)
 
     # sort edges by metric
@@ -128,4 +130,5 @@ def get_case_ranking_by_metric(edge_data, metric):
                                         ascending=ascending).index.tolist()
 
     # return cited case
+    # return np.array([e[1] for e in sored_edges])
     return np.array([e.split('_')[1] for e in sored_edges])

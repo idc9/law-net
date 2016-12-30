@@ -36,8 +36,8 @@ def get_rankscores_LR(G, test_params, metrics,
         op_id_to_bow_id = None
 
     # load edge data for all edges
-    all_edge_data = pd.read_csv(subnet_dir + 'edge_data.csv',
-                                index_col=0)
+    tr_edge_data = pd.read_csv(subnet_dir + 'edge_data.csv',
+                               index_col=0)
 
     # ranking scores for each test case
     scores = pd.DataFrame(index=[c['name'] for c in test_cases],
@@ -61,7 +61,7 @@ def get_rankscores_LR(G, test_params, metrics,
             columns_to_use.append('similarity')
 
         # fit logistic regression
-        LogReg = fit_logistic_regression(all_edge_data, columns_to_use)
+        LogReg = fit_logistic_regression(tr_edge_data, columns_to_use)
 
         # compute scores on test cases
         testcase_scores = get_test_case_scores_LR(G, test_cases, snapshots_dict,
@@ -198,4 +198,5 @@ def get_case_ranking_logreg(edge_data, LogReg, columns_to_use):
                                kind='mergesort', inplace=True)
 
     # case rankings (CL ids)
+    # return np.array([e[1] for e in citation_probs.index])
     return np.array([e.split('_')[1] for e in citation_probs.index])
