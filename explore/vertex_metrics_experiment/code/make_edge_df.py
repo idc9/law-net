@@ -10,7 +10,7 @@ from get_edge_data import *
 from bag_of_words import *
 
 
-def make_edge_df(G, experiment_data_dir, active_years,
+def make_edge_df(G, subnet_dir, active_years,
                  num_non_edges_to_add, columns_to_use,
                  metric_normalization=None, seed=None):
     """
@@ -20,7 +20,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
     ----------
     G:
 
-    experiment_data_dir:
+    subnet_dir:
 
     active_years:
 
@@ -31,14 +31,14 @@ def make_edge_df(G, experiment_data_dir, active_years,
     seed:
     """
     # load snapshot dataframes
-    snapshots_dict = load_snapshots(experiment_data_dir)
+    snapshots_dict = load_snapshots(subnet_dir)
 
     if len(snapshots_dict) == 0:
         raise ValueError('failed ot load snapshots train')
 
     # mabye load the similarities
     if 'similarity' in columns_to_use:
-        tfidf_matrix, op_id_to_bow_id = load_tf_idf(experiment_data_dir + 'nlp/')
+        tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
     else:
         tfidf_matrix = None
         op_id_to_bow_id = None
@@ -46,6 +46,7 @@ def make_edge_df(G, experiment_data_dir, active_years,
     # initialize edge data frame
     colnames = copy.deepcopy(columns_to_use)
     colnames.append('is_edge')
+    colnames.remove('year')
     edge_data = pd.DataFrame(columns=colnames)
 
     # get all present edges
@@ -97,29 +98,30 @@ def make_edge_df(G, experiment_data_dir, active_years,
 
         edge_data = edge_data.append(sn_edge_data)
 
-    edge_data.to_csv(experiment_data_dir + 'edge_data.csv')
+    edge_data.to_csv(subnet_dir + 'edge_data.csv')
 
 
-def update_edge_df(G, experiment_data_dir, active_years, columns_to_add):
+def update_edge_df(G, subnet_dir, active_years, columns_to_add,
+                   metric_normalization=None):
     """
     Adds new columns to edge_data frame
     """
     # load snapshot dataframes
-    snapshots_dict = load_snapshots(experiment_data_dir)
+    snapshots_dict = load_snapshots(subnet_dir)
 
     if len(snapshots_dict) == 0:
         raise ValueError('failed ot load snapshots train')
 
     # load edge data frame
-    edge_data_path = experiment_data_dir + 'edge_data.csv'
+    edge_data_path = subnet_dir + 'edge_data.csv'
     if os.path.exists(edge_data_path):
         edge_data = pd.read_csv(edge_data_path, index_col=0)
     else:
         raise ValueError('cant find edge data')
 
     # mabye load the similarities
-    if 'similarity' in columns_to_use:
-        tfidf_matrix, op_id_to_bow_id = load_tf_idf(experiment_data_dir + 'nlp/')
+    if 'similarity' in columns_to_add:
+        tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
     else:
         tfidf_matrix = None
         op_id_to_bow_id = None
@@ -145,11 +147,13 @@ def update_edge_df(G, experiment_data_dir, active_years, columns_to_add):
 
         # get snapshot year edge data frame
         sn_edge_data = get_edge_data(G, edges, snapshot_df, columns_to_add,
-                                     tfidf_matrix, op_id_to_bow_id )
+                                     tfidf_matrix, op_id_to_bow_id,
+                                     metric_normalization, edge_status=None)
+
         edge_data_to_add = edge_data_to_add.append(sn_edge_data)
 
     # add new columns
-    edge_data[colums_to_add] = edge_data_to_add
+    edge_data[columns_to_add] = edge_data_to_add
 
     # save updated edge dataframe
     edge_data.to_csv(edge_data_path)

@@ -4,20 +4,20 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 
-def load_snapshots(experiment_data_dir):
+def load_snapshots(subnet_dir):
     """
     Loads the snapshot data frames into a dict indexed by the file names
 
     Parameters
     ----------
-    experiment_data_dir: path to experiment data files
+    subnet_dir: path to experiment data files
 
     Output
     ------
     python dict
     """
 
-    path_to_vertex_metrics_folder = experiment_data_dir + 'snapshots/'
+    path_to_vertex_metrics_folder = subnet_dir + 'snapshots/'
 
     snapshot_paths = glob.glob(path_to_vertex_metrics_folder + \
                                "/vertex_metrics*.csv")

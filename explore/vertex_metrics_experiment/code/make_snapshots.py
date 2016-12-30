@@ -7,10 +7,12 @@ from math import *
 from datetime import datetime
 
 from pipeline_helper_functions import *
+from custom_vertex_metrics import *
 
 
 def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
-                                 experiment_data_dir, print_progress=True):
+                                 subnet_dir, print_progress=True,
+                                 overwrite=False):
     """
     Creates the data frames with vertex metics in given years
 
@@ -29,22 +31,33 @@ def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
     --------
     writes csv files of the vertex metric data frame for each year in years
     """
+
+    # directory where we save the snapshot dataframes
+    sn_dir = subnet_dir + 'snapshots/'
+
+    # maybe kill old snapshot files if there are already some in the directory
+    if overwrite:
+        files_in_dir = os.listdir(sn_dir)
+
+        for f in files_in_dir:
+            os.remove(sn_dir + f)
+
     # include year before min active year
     all_years = copy.copy(active_years)
     all_years.append(min(active_years) - 1)
 
     # create a vertex df for each year T
     i = 0
-    for T in all_years:
+    for year in all_years:
         i += 1
         if print_progress:
             if int(log(i+1, 2)) == log(i+1, 2):
                 current_time = datetime.now().strftime('%H:%M:%S')
-                print 'year %d, (%d/%d) at %s' % (T, i + 1,
+                print 'year %d, (%d/%d) at %s' % (year, i + 1,
                                                   len(all_years), current_time)
-        
+
         # get subgraph at particular time
-        G_T = get_network_at_time(G, T)
+        G_T = get_network_at_time(G, year)
 
         # creates dataframe using 'name' attribute as index because
         # it is consistent throughout all truncations of the network
@@ -54,10 +67,10 @@ def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
 
         # add column for each metric
         for metric in vertex_metrics:
-            df_T[metric] = create_metric_column(G_T, metric)
+            df_T[metric] = create_metric_column(G_T, metric, year)
 
-        file_path = experiment_data_dir + 'snapshots/vertex_metrics_' \
-                                        + str(T) + '.csv'
+        file_path = sn_dir + 'vertex_metrics_' \
+                                        + str(year) + '.csv'
         df_T.to_csv(file_path, index=True)
 
 
@@ -84,7 +97,7 @@ def get_network_at_time(G, T):
     return G_T
 
 
-def create_metric_column(G, metric):
+def create_metric_column(G, metric, year=None):
     """
     Returns an array of the pageranks for vertices in a network G
 
@@ -94,6 +107,8 @@ def create_metric_column(G, metric):
 
     metric: string of the vertex metrics we want to compute
     (pagerank, indegree, etc)
+
+    year: is year of the network if we are passing a time truncated network
 
     - indegree
     - outdegree
@@ -109,11 +124,14 @@ def create_metric_column(G, metric):
     - d_eigen
     - u_eigen
 
+    d_ means for directed graph
+    u_ means for undirected graph
     Output
     -------
     metric: an array of size G.vs that contains the metric for G's vertices
             or does not return value on invalid metric parameter
     """
+
     try:
         # calculates metric which matched parameter
         if metric == 'indegree':
@@ -146,6 +164,12 @@ def create_metric_column(G, metric):
             metric_column = G.eigenvector_centrality()
         elif metric == 'u_eigen':
             metric_column = G.as_undirected().eigenvector_centrality()
+        elif 'recentcite' in metric:
+            # metric == recentcite_10 means threshold = 10
+            current_year = year
+            threshold = int(metric.split('_')[-1])
+
+            metric_column = get_recent_citations(G, current_year, threshold)
 
     except Exception:
         print 'problem with %s' % metric

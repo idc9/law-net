@@ -86,12 +86,12 @@ def make_bag_of_words(text_dir, min_df=0, max_df=1):
 
     # to load
     bow_matrix_matrix =
-    load_sparse_csr(experiment_data_dir + 'bag_of_words_matrix')
+    load_sparse_csr(subnet_dir + 'bag_of_words_matrix')
 
-    with open(experiment_data_dir + 'op_id_to_bow_id.p', 'rb') as f:
+    with open(subnet_dir + 'op_id_to_bow_id.p', 'rb') as f:
         op_id_to_bow_id = pickle.load(f)
 
-    with open(experiment_data_dir + 'vocab.p', 'rb') as f:
+    with open(subnet_dir + 'vocab.p', 'rb') as f:
         vocab = pickle.load(f)
 
     """
@@ -114,12 +114,12 @@ def make_bag_of_words(text_dir, min_df=0, max_df=1):
                        i in range(len(file_paths))}
 
     # save data
-    save_sparse_csr(experiment_data_dir + 'bag_of_words_matrix', bow_matrix)
+    save_sparse_csr(subnet_dir + 'bag_of_words_matrix', bow_matrix)
 
-    with open(experiment_data_dir + 'op_id_to_bow_id.p', 'wb') as fp:
+    with open(subnet_dir + 'op_id_to_bow_id.p', 'wb') as fp:
         pickle.dump(op_id_to_bow_id, fp)
 
-    with open(experiment_data_dir + 'vocab.p', 'wb') as fp:
+    with open(subnet_dir + 'vocab.p', 'wb') as fp:
         pickle.dump(vocab, fp)
 
 

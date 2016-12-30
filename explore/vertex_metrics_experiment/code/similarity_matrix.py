@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import time
 
 
-def make_similarity_matrix(experiment_data_dir, tfidf_matrix,
+def make_similarity_matrix(subnet_dir, tfidf_matrix,
                            CLid_to_index):
     """
     saves similarity matrix and CLid_to_index dict
@@ -24,30 +24,30 @@ def make_similarity_matrix(experiment_data_dir, tfidf_matrix,
     # save similarity matrix
     start = time.time()
 
-    np.save(experiment_data_dir + 'cosine_sims', similarity_matrix)
+    np.save(subnet_dir + 'cosine_sims', similarity_matrix)
 
     # save clid to index map
-    with open(experiment_data_dir + 'CLid_to_index.p', 'wb') as fp:
+    with open(subnet_dir + 'CLid_to_index.p', 'wb') as fp:
         pickle.dump(CLid_to_index, fp)
 
 
-def load_similarity_matrix(experiment_data_dir):
+def load_similarity_matrix(subnet_dir):
     """
     Load similarity matrix and CLid_to_index dict
 
     Parameters
     ----------
-    experiment_data_dir:
+    subnet_dir:
 
     Output
     ------
     similarity_matrix, CLid_to_index
 
-    >>> similarity_matrix, CLid_to_index = load_similarity_matrix(experiment_data_dir)
+    >>> similarity_matrix, CLid_to_index = load_similarity_matrix(subnet_dir)
     """
-    similarity_matrix = np.load(experiment_data_dir + 'cosine_sims.npy')
+    similarity_matrix = np.load(subnet_dir + 'cosine_sims.npy')
 
-    with open(experiment_data_dir + 'CLid_to_index.p', 'rb') as f:
+    with open(subnet_dir + 'CLid_to_index.p', 'rb') as f:
         CLid_to_index = pickle.load(f)
 
     return similarity_matrix.astype(np.float64), CLid_to_index
@@ -111,5 +111,5 @@ def compute_similarities(tfidf_matrix, CLid_pair, CLid_to_index):
     """
     # return [compute_similarity(tfidf_matrix, pair, CLid_to_index) for pair in CLid_pair]
     return [cosine_similarity(tfidf_matrix[CLid_to_index[pair[0]], :],
-                              tfidf_matrix[CLid_to_index[pair[1]], :])
+                              tfidf_matrix[CLid_to_index[pair[1]], :])[0][0]
             for pair in CLid_pair]

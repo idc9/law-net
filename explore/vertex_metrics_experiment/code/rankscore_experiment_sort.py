@@ -5,14 +5,14 @@ import pandas as pd
 from math import *
 from datetime import datetime
 
-from compute_ranking_metrics import *
+from experiment_helper_functions import *
 from pipeline_helper_functions import *
 from similarity_matrix import *
 from attachment_model_inference import *
 
 
 def get_rankscores_sort(G, test_params, metrics,
-                        experiment_data_dir,
+                        subnet_dir,
                         print_progress=True):
     """
     Computes rank scores for each metric individually in metrics list
@@ -25,7 +25,7 @@ def get_rankscores_sort(G, test_params, metrics,
                                 test_params['seed'])
 
     # load snapshots
-    snapshots_dict = load_snapshots(experiment_data_dir)
+    snapshots_dict = load_snapshots(subnet_dir)
 
     # ranking scores for each test case
     scores = pd.DataFrame(index=[c['name'] for c in test_cases],

@@ -10,8 +10,8 @@ from nltk.corpus import stopwords
 from pipeline.download_data import json_to_dict
 
 
-def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None,
-                    output_path=None):
+def make_text_files(data_dir, court_name, network_name=None,
+                    op_id_good=None, op_id_bad=None):
     """
     Convertes the .json files to text files and
     does some initial pre-processing
@@ -23,20 +23,21 @@ def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None,
 
     court_name: which court to process
 
-    CLid_good: ignore cases that are NOT in this list
+    network_name: where to save the processes text files
 
-    CLid_bad: ignore cases that ARE in this list
+    op_id_good: ignore cases that are NOT in this list
 
-    stop_words: list of stop words to use (if any)
+    op_id_bad: ignore cases that ARE in this list
 
     Output
     ------
     saves a bunch of .txt files
     """
+    if not network_name:
+        network_name = court_name
 
     input_path = data_dir + 'raw/' + court_name + '/opinions/'
-    if not output_path:
-        output_path = data_dir + 'vertex_metrics_experiment/textfiles/'
+    output_path = data_dir + network_name + '/textfiles/'
 
     if not os.path.exists(input_path):
         raise ValueError('input folder does not exist')
@@ -45,21 +46,21 @@ def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None,
     json_files = os.listdir(input_path)
 
     # CL ids of downloaded cases
-    CLids = set([re.findall('\d+', f)[0] for f in json_files])
+    op_ids = set([re.findall('\d+', f)[0] for f in json_files])
 
     # focues on good cases
-    if CLid_good:
-        CLids = CLids.intersection(set(CLid_good))
+    if op_id_good is not None:
+        op_ids = op_ids.intersection(set(op_id_good))
 
     # ignore bad cases
-    if CLid_bad:
-        CLids = CLids.difference(set(CLid_bad))
+    if op_id_bad is not None:
+        op_ids = op_ids.difference(set(op_id_bad))
 
     # crate a text file for each case
-    for case in CLids:
+    for op_id in op_ids:
 
         # path to opinion file
-        file_path = input_path + case + '.json'
+        file_path = input_path + op_id + '.json'
 
         # grab the json
         json_file = json_to_dict(file_path)
@@ -67,7 +68,7 @@ def make_text_files(data_dir, court_name, CLid_good=None, CLid_bad=None,
         # get the text out of the json file
         text = get_text_from_json(json_file)
 
-        filename = output_path + case + '.txt'
+        filename = output_path + op_id + '.txt'
         with open(filename, "w") as text_file:
             # text_file.write(text)
             # unicode makes me want to cry sometimes
@@ -120,7 +121,7 @@ def text_normalization(text, stop_words=None, stemmer=None):
     return " ".join(words)
 
 
-def get_normalized_text_dict(experiment_data_dir):
+def get_normalized_text_dict(subnet_dir):
     """
     Normalizes each text file in the corpus and puts them into a dict
 
@@ -130,7 +131,7 @@ def get_normalized_text_dict(experiment_data_dir):
     """
 
     # CL ids of all cases
-    input_path = experiment_data_dir + 'textfiles/'
+    input_path = subnet_dir + 'textfiles/'
     text_files = glob.glob(input_path + "*.txt")
     CLids = set([re.findall('\d+', f)[0] for f in text_files])
 

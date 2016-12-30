@@ -2,13 +2,13 @@ import igraph as ig
 import pandas as pd
 
 
-def make_graph(experiment_data_dir, network_name=None):
+def make_graph(subnet_dir, network_name=None):
     # load vertex metadata and edgelist
-    case_metadata = pd.read_csv(experiment_data_dir + 'case_metadata.csv',
+    case_metadata = pd.read_csv(subnet_dir + 'case_metadata.csv',
                                 index_col=0)
     case_metadata.index = case_metadata.index.astype('str')
 
-    edgelist = pd.read_csv(experiment_data_dir + 'edgelist.csv',
+    edgelist = pd.read_csv(subnet_dir + 'edgelist.csv',
                            index_col=False)
     edgelist['citing'] = edgelist['citing'].astype(str)
     edgelist['cited'] = edgelist['cited'].astype(str)
@@ -53,4 +53,4 @@ def make_graph(experiment_data_dir, network_name=None):
         fname = network_name + '_network.graphml'
     else:
         fname = 'network.graphml'
-    G.write_graphml(experiment_data_dir + fname)
+    G.write_graphml(subnet_dir + fname)
