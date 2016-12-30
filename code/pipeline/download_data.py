@@ -6,6 +6,7 @@ import tarfile
 import time
 import json
 import gzip
+import pandas as pd
 
 username = 'unc_networks'
 password = 'UNCSTATS'
