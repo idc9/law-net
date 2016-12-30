@@ -161,6 +161,14 @@ def download_master_edgelist(data_dir):
     df.to_csv(fname_csv, index=False)
 
 
+def download_scdb(data_dir):
+    # download data from scdb
+    scdb_modern_url = 'http://scdb.wustl.edu/_brickFiles/2016_01/SCDB_2016_01_caseCentered_Citation.csv.zip'
+    download_zip_to_csv(scdb_modern_url, data_dir + 'scdb/')
+    scdb_legacy_url = 'http://scdb.wustl.edu/_brickFiles/Legacy_03/SCDB_Legacy_03_caseCentered_Citation.csv.zip'
+    download_zip_to_csv(scdb_legacy_url, data_dir + 'scdb/')
+
+
 def url_to_dict(url):
     """
     :param url: String representing a json-style object on Court Listener's
@@ -207,3 +215,28 @@ def json_to_dict(path):
     with open(path) as data_file:
         data = json.load(data_file)
         return data
+
+
+def download_zip_to_csv(url, path):
+    """
+    downloads a zipped csv files and unzips it
+    The file name is the end of the url
+    Assume index_col = 0
+    """
+    # get the file name and path
+    fname = url.split("/")[-1]
+    zip_path = path + fname
+
+    # download the zip file
+    with open(zip_path, "wb") as f:
+        r = requests.get(url)
+        f.write(r.content)
+
+    # open the zip file as a csv
+    data = pd.read_csv(zip_path)
+
+    # save csv
+    data.to_csv(zip_path.split('.zip')[0], index_col=0)
+
+    # kill the zip file
+    os.remove(zip_path)
