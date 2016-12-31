@@ -1,20 +1,24 @@
 # law-net
-What can we learn by applied network analysis to the law? This project contains code to analyze the law case citation network using data generously provided by [CourtListener](https://www.courtlistener.com/). You will find code that creates the pipeline that takes data from CourtListener and creates various citation networks such as
+What can we learn by applying network and text analysis to the law? This project contains code to analyze legal text and citation networks using data generously provided by [CourtListener](https://www.courtlistener.com/) and the [Supreme Court Database](http://scdb.wustl.edu/).
 
-- entire law case citation network (this is ~3 million nodes and ~30 million edges)
-- SCOTUS subnetwork (e.g. both the citing case and cited case are SCOTUS cases)
-- jurisdiction network
+Some interesting networks include
 
-Note that 'entire' does not actually mean we have every court case. We are still figuring out how good our coverage is and will post updates when we have more.
+- Supreme Court citation network (27,885 nodes, 234,312 directed edges)
+- Federal Appellate circuit (959,985 nodes, 6,649,916 directed edges)
+- any one of the over [400 jurisdiction](https://www.courtlistener.com/coverage/) subnetworks listed on CourtListener
 
-# Getting started with SCOTUS
+These all have accompanying opinion text files as well as additional node metadata such as the case date and hand coded issue area (for SCOTUS).
 
-You can load the SCOTUS subnetwork (saved in this directory as a graphml file)
+We recently gave a presentation about our exploratory analysis at the [PyData](http://pydata.org/carolinas2016/) conference.
+
+https://www.youtube.com/watch?v=AP7_godzwVI
+
+
+You can load the SCOTUS subnetwork (saved in this directory as a .graphml file)
 ```
 import igraph
 G = Graph.Read_GraphML('scotus_network.graphml')
 ```
-
 
 # Our code
 
@@ -32,7 +36,7 @@ Current we are using data from [CourtListener](courtlistener.com)  (CL) and the 
 - opinion texts come from CL
 - some case metadata (jurisdiction, data, judges) comes from CL
 - additional case meta data comes from SCDB
-    - for `issueArea` we have coded Missing as 0. Only SCOTUS cases can have issueArea
+    - for `issueArea` we have coded Missing as 0. Only SCOTUS cases can have issueArea.
 
 - we identify cases by their CourtListener **opinion** id
     - CL opinion ids and cluster ids are **not** necessarily the same. One cluster can have many opinions.
