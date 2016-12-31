@@ -13,14 +13,18 @@ We recently gave a presentation about our exploratory analysis at the [PyData](h
 
 [![PyData Carolinas](http://img.youtube.com/vi/AP7_godzwVI/1.jpg)](http://www.youtube.com/watch?v=AP7_godzwVI)
 
+[![PyData Carolinas](http://img.youtube.com/vi/AP7_godzwVI/0.jpg)](http://www.youtube.com/watch?v=AP7_godzwVI)
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/-AP7_godzwVI" frameborder="0" allowfullscreen></iframe>
+
+
+# Our code
 You can load the SCOTUS subnetwork (saved in this directory as a .graphml file)
 ```
 import igraph
 G = Graph.Read_GraphML('scotus_network.graphml')
 ```
 
-# Our code
 
 User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon. If you have trouble with something please reach out to Iain (iain@unc.edu).
 
