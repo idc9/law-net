@@ -138,3 +138,34 @@ def score_ranking(cited_cases, ancestor_ranking):
         case_scores.append(rank_score)
 
     return np.mean(case_scores)
+
+
+def rank_cases_by_metric(edge_data, metric):
+    """
+    Sorts cases by a given metric
+
+    Parameters
+    ----------
+    edge_data: edge data frame
+
+    metric: a single column from edge_data
+
+    Output
+    ------
+    CL ids of ranked cases
+    """
+
+    # larger value of metric is means more likely to be cited
+    if metric in ['age']:
+        large_is_good = False
+    else:
+        large_is_good = True
+    ascending = (not large_is_good)
+
+    # sort edges by metric
+    sored_edges = edge_data.sort_values(by=metric,
+                                        ascending=ascending).index.tolist()
+
+    # return cited case
+    # return np.array([e[1] for e in sored_edges])
+    return np.array([e.split('_')[1] for e in sored_edges])

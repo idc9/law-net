@@ -9,11 +9,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
+
+
 from text_normalization import *
 from pipeline_helper_functions import save_sparse_csr, load_sparse_csr
 
 
-def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
+def make_tf_idf(text_dir, output_dir):
     """
     computes the td-idf matrix of a corpus
 
@@ -30,30 +32,31 @@ def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
     op_id_to_tfidf_id: maps CL opinon id to index (dict)
     """
 
-    # text files
     file_paths = glob.glob(text_dir + '*.txt')
+    tf_iter = textfile_iter(file_paths)
 
-    # for text normalization
+    # stemmer and stop words
     stemmer = PorterStemmer()
     stop_words = stopwords.words("english")
+    min_df = 1  # be careful about integer/float, see sklean documentation
+    max_df = 1.0
 
-    # iterator over textfiles
-    tf_iter = textfile_iter(file_paths, stop_words, stemmer)
+    # stem stop words
+    stop_words = [stemmer.stem(w) for w in stop_words]
 
-    # compute tf-idf
-    tfidf = TfidfVectorizer(min_df=min_df, max_df=max_df)
-    # tfidf_matrix = tfidf.fit_transform(tf_iter)
+    tfidf = TfidfVectorizer(min_df=min_df,
+                            max_df=max_df,
+                            tokenizer=StemTokenizer(stemmer),
+                            stop_words=stop_words)
 
-    text_dict = get_normalized_text_dict(text_dir)
-    tfidf_matrix = tfidf.fit_transform(text_dict.values())
+    tfidf_matrix = tfidf.fit_transform(tf_iter)
 
     # vocabulary
     vocab = tfidf.get_feature_names()
 
     # map from CL opinion ids to bow matix index
-    # op_id_to_tfidf_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
-    #                      i in range(len(file_paths))}
-    op_id_to_bow_id = {text_dict.keys()[i]: i for i in range(len(file_paths))}
+    op_id_to_bow_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
+                       i in range(len(file_paths))}
 
     # save data
     save_sparse_csr(output_dir + 'tfidf_matrix', tfidf_matrix)
@@ -77,10 +80,7 @@ def load_tf_idf(nlp_dir):
     with open(nlp_dir + 'vocab.p', 'rb') as f:
         vocab = pickle.load(f)
 
-    return tfidf_matrix, op_id_to_bow_id # , vocab
-
-
-def make_bag_of_words(text_dir, min_df=0, max_df=1):
+def make_bag_of_words(text_dir):
     """
     computes the td-idf matrix of a corpus
 
@@ -108,30 +108,30 @@ def make_bag_of_words(text_dir, min_df=0, max_df=1):
 
     """
 
-    # text files
     file_paths = glob.glob(text_dir + '*.txt')
+    tf_iter = textfile_iter(file_paths)
 
-    # for text normalization
+    # stemmer and stop words
     stemmer = PorterStemmer()
     stop_words = stopwords.words("english")
+    min_df = 1  # be careful about integer/float, see sklean documentation
+    max_df = 1.0
 
-    # iterator over textfiles
-    tf_iter = textfile_iter(file_paths, stop_words, stemmer)
+    # stem stop words
+    stop_words = [stemmer.stem(w) for w in stop_words]
 
-    # compute bag of words
-    bag_of_words = CountVectorizer(min_df=min_df, max_df=max_df)
-    # bow_matrix = bag_of_words.fit_transform(tf_iter)
-    text_dict = get_normalized_text_dict(text_dir)
+    bag_of_words = CountVectorizer(min_df=min_df,
+                                   max_df=max_df,
+                                   tokenizer=StemTokenizer(stemmer),
+                                   stop_words=stop_words)
 
-    bow_matrix = bag_of_words.fit_transform(text_dict.values())
+    bow_matrix = bag_of_words.fit_transform(tf_iter)
     # vocabulary
     vocab = bag_of_words.get_feature_names()
 
     # map from CL opinion ids to bow matix index
-    # op_id_to_bow_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
-    #                    i in range(len(file_paths))}
-
-    op_id_to_bow_id = {text_dict.keys()[i]: i for i in range(len(file_paths))}
+    op_id_to_bow_id = {re.search(r'(\d+)\.txt', file_paths[i]).group(1): i for
+                       i in range(len(file_paths))}
 
     # save data
     save_sparse_csr(subnet_dir + 'bag_of_words_matrix', bow_matrix)
@@ -147,7 +147,7 @@ class textfile_iter:
     """
     Iterator that returns a cleaned textfile given a list of paths
     """
-    def __init__(self, paths, stop_words=None, stemmer=None):
+    def __init__(self, paths):
         self.i = 0
 
         # if there is only one file
@@ -157,9 +157,6 @@ class textfile_iter:
         self.paths = paths
         self.num_files = len(paths)
 
-        self.stop_words = stop_words
-        self.stemmer = stemmer
-
     def __iter__(self):
         return self
 
@@ -168,7 +165,7 @@ class textfile_iter:
             text = open(self.paths[self.i], 'r').read()
             self.i += 1
 
-            return text_normalization(text, self.stop_words, self.stemmer)
+            return text
 
         else:
             raise StopIteration()

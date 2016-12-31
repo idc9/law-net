@@ -3,13 +3,7 @@ import glob
 import re
 from bs4 import BeautifulSoup
 
-import nltk
-from nltk.stem.porter import PorterStemmer
-from nltk.corpus import stopwords
-
-from bag_of_words import text_normalization
 from pipeline.download_data import json_to_dict
-from text_normalization import text_normalization
 
 
 def make_text_files(data_dir, court_name, network_name=None,

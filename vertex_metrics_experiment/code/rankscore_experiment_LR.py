@@ -45,10 +45,6 @@ def get_rankscores_LR(G, test_params, metrics,
 
     # get scores for each metric
     for metric in metrics:
-
-        if print_progress:
-            print metric
-
         # either all metrics or individual metric
         if metric == 'all':
             columns_to_use = metrics
@@ -92,10 +88,6 @@ def get_test_case_scores_LR(G, test_cases, snapshots_dict,
     i = 0
     for test_case in test_cases:
         i += 1
-        if print_progress:
-            if int(log(i, 2)) == log(i, 2):
-                current_time = datetime.now().strftime('%H:%M:%S')
-                print '(%d/%d) at %s' % (i, len(test_cases), current_time)
 
         score = get_score_LR(G, test_case, snapshots_dict,
                              tfidf_matrix, op_id_to_bow_id,
