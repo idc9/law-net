@@ -1,3 +1,5 @@
+
+
 import numpy as np
 from scipy import stats
 import pandas as pd
@@ -7,36 +9,31 @@ from scipy.stats import gaussian_kde
 
 
 def print_describe(values):
-    print 'nobs: %d' % len(values)
-    print 'mean: %1.3f' % np.mean(values)
-    print 'median: %1.3f' % np.median(values)
-    print 'min: %1.3f' % min(values)
-    print 'max: %1.3f' % max(values)
-    print 'std: %1.3f' % np.std(values)
+    des = stats.describe(values)
+    print 'nobs: %d' % stats.describe(values).nobs
+    print 'mean: %1.2f' % stats.describe(values).mean
+    print 'median: %1.2f' % np.median(values)
+    print 'min: %1.2f' % stats.describe(values).minmax[0]
+    print 'max: %1.2f' % stats.describe(values).minmax[1]
+    print 'variance: %1.2f' % stats.describe(values).variance
     print 'unique values %d' % len(set(values))
 
 
 def plot_scores(scores,
-                start=1,
-                n_comp=3,
-                title='',
-                labels=None):
+                start=1, n_comp=3,
+                title=''):
     """
     Plots the scores plots of a data frame where the rows are observations and
     the columns are featurs
-
     for PCA when X = U D V^t, scores = U * D = X * V
-
     """
-    # TODO: add overall title
-
     if type(scores) == pd.core.frame.DataFrame:
-        labels = scores.columns.tolist()
+        labels = scores.columns
         scores = scores.as_matrix()
+    else:
+        labels = ['comp ' + str(i) for i in range(1, n_comp + 1)]
 
-    if labels is None or len(labels) < n_comp:
-        lables = ['comp %d' % j for j in range(1, n_comp + 1)]
-
+    # TODO: add overall title
     start -= 1  # zero indexing
 
     plt.figure(figsize=[5 * n_comp, 5 * n_comp])
@@ -48,12 +45,25 @@ def plot_scores(scores,
                 plt.subplot(n_comp, n_comp, p)
                 # plt.hist(U[i, :])
                 plot_jitter_hist(scores[:, i])
+                # plt.ylabel('comp %d' % (j + 1))
                 plt.ylabel(labels[j])
+
             elif i < j:
                 plt.subplot(n_comp, n_comp, p)
-                plt.scatter(scores[:, j], scores[:, i], alpha=.8)
+                x = scores[:, j]
+                y = scores[:, i]
+                plt.scatter(x, y, alpha=.8)
+                # plt.xlabel('comp %d' % (j + 1))
+                # plt.ylabel('comp %d' % (i + 1))
                 plt.xlabel(labels[j])
                 plt.ylabel(labels[i])
+
+                # manually set ranges
+                plt.xlim([min(x) - .1 * abs(min(x)),
+                          max(x) + .1 * abs(max(x))])
+
+                plt.ylim([min(y) - .1 * abs(min(y)),
+                          max(y) + .1 * abs(max(y))])
 
                 if i == 0 and j == 1:
                     plt.title(title)
@@ -96,7 +106,6 @@ def plot_jitter_hist(y, n_bins=10, xlabel='', title=''):
     # plt.plot(p, y_kde, color='blue')
 
 
-
 def plot_pairwise_scatter(X, Y):
     """
     Makes the pairwise scatter plots for two pandas data frames X, Y
@@ -133,7 +142,6 @@ def plot_pairwise_scatter(X, Y):
 def plot_scatter_matrix(X):
     """
     Plots the scatter plot matrix for all variable in X, a pandas data frame
-
     """
     d = X.shape[1]
     cols = X.columns.tolist()
@@ -174,12 +182,10 @@ def plot_scatter_matrix(X):
 def plot_individual_loadings(start, n_comp, V):
     """
     Plots the K loadings individually.
-
     Parameters
     ----------
     V: loadings matrix (i.e. columns of V are evecs of X^tX where X is
     the centered data matrix with rows as observations)
-
     start: loading number to start at
     n_comp: how many loadings to plot
     """
@@ -225,12 +231,10 @@ def plot_individual_loadings(start, n_comp, V):
 def plot_K_loadings(V, K):
     """
     Plots the first K loadings.
-
     Parameters
     ----------
     V: loadings matrix (i.e. columns of V are evecs of X^tX where X is
     the centered data matrix with rows as observations)
-
     K: number of ladings components to include
     """
     plt.figure(figsize=[20, 10])

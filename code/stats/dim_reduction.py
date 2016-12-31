@@ -19,7 +19,6 @@ def standardize_vector(v, center=True, scale=False):
 def standardize_vec(v, center='mean', scale='std'):
     """"
     Standardizes a vector by centering and scaling it
-
     This function will ignore scaling if the scale value is zero and will
     instead set the scale value to 1
     """
@@ -63,16 +62,15 @@ def get_PCA(X, scale=False):
     Returns the PCA decomposition of data frame X.
     Rows of X are observations and columns are features.
     Centers columns then performs PCA.
-
     Optionally scales columns by standard deviation
-
     X = U D V^t
-
     Output
     ------
     U, D, V
-
     """
+    if type(X) == np.ndarray:
+        X = pd.DataFrame(X)
+
     # center columns
     X_stand = X.apply(lambda c: standardize_vector(c,
                                                    center=True, scale=scale))
@@ -84,7 +82,6 @@ def get_PCA(X, scale=False):
 def get_pls(X, Y, n_comp):
     """
     returns the PLS scores
-
     parameters
     ----------
     X: pandas data frame
