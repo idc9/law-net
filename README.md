@@ -11,11 +11,8 @@ Note that 'entire' does not actually mean we have every court case. We are still
 
 You can load the SCOTUS subnetwork (saved in this directory as a graphml file)
 ```
-# set this on your computer
-path = 'YOUR PATH'
-
 import igraph
-G = Graph.Read_GraphML(path + 'scotus_network.graphml')
+G = Graph.Read_GraphML('scotus_network.graphml')
 ```
 
 
