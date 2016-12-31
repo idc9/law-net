@@ -11,7 +11,7 @@ These all have accompanying opinion text files as well as additional node metada
 
 We recently gave a presentation about our exploratory analysis at the [PyData](http://pydata.org/carolinas2016/) conference.
 
-https://www.youtube.com/watch?v=AP7_godzwVI
+[![PyData Carolinas](http://img.youtube.com/vi/AP7_godzwVI/1.jpg)](http://www.youtube.com/watch?v=AP7_godzwVI)
 
 
 You can load the SCOTUS subnetwork (saved in this directory as a .graphml file)
