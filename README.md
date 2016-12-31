@@ -18,7 +18,7 @@ G = Graph.Read_GraphML('scotus_network.graphml')
 
 # Our code
 
-User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon. If you have trouble with something please reach out to [Iain](iain@unc.edu).
+User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon. If you have trouble with something please reach out to Iain (iain@unc.edu).
 
 To download much more data see [download_data.ipynb](https://github.com/idc9/law-net/blob/master/download_data.ipynb). This notebook allows you to work with other jurisdiction subnetworks and the opinion text files. Note the two directories you have to change at the top of the notebook.
 
@@ -26,7 +26,7 @@ One of the functions in download_data.ipynb will set up a data directory. I sugg
 
 
 
-## about the data
+## About the data
 Current we are using data from [CourtListener](courtlistener.com)  (CL) and the [Supreme Court Data Base](http://scdb.wustl.edu/) (SCDB)
 - the citation network comes from CL
 - opinion texts come from CL
