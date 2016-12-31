@@ -267,17 +267,31 @@ def plot_K_loadings(V, K):
     plt.title('sorted first %d pricipal directions' % K)
 
 
-def plot_2class_scores(scores, classes, start=0, n_comp=3):
+def plot_2class_scores(scores, classes, start=1, n_comp=3):
     """
     creates scores plot with two classes
+
+    Parameters
+    ---------
+    scores:
+
+    classes:
+
+    start:
+
+    n_comp:
+
     """
     clA_label = list(set(classes))[0]
     clB_label = list(set(classes))[1]
 
-    palette = class_pallette = ['blue' if c == clA_label
-                                else 'red' for c in classes]
+    palette = ['blue' if c == clA_label else 'red' for c in classes]
 
     plt.figure(figsize=[5 * n_comp, 5 * n_comp])
+
+    # stupid zero indexing
+    start -= 1
+
     p = 1
     for i in range(start, start + n_comp):
         for j in range(start, start + n_comp):
@@ -315,7 +329,6 @@ def plot_2class_hist(X, classes, legend=True, xlabel=''):
 
     plt.xlim([min(bins), max(bins)])
     plt.ylim([0, max(counts)])
-    plt.y
 
     # grab points in each class
     Xa = [X[k] for k in range(len(X)) if classes[k] == clA_label]
