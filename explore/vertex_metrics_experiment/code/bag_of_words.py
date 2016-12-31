@@ -59,7 +59,7 @@ def make_tf_idf(text_dir, output_dir, min_df=0, max_df=1):
     save_sparse_csr(output_dir + 'tfidf_matrix', tfidf_matrix)
 
     with open(output_dir + 'op_id_to_bow_id.p', 'wb') as fp:
-        pickle.dump(op_id_to_tfidf_id, fp)
+        pickle.dump(op_id_to_bow_id, fp)
 
     with open(output_dir + 'vocab.p', 'wb') as fp:
         pickle.dump(vocab, fp)

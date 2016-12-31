@@ -136,34 +136,43 @@ def create_metric_column(G, metric, year=None):
         # calculates metric which matched parameter
         if metric == 'indegree':
             metric_column = G.indegree()
+
         elif metric == 'outdegree':
             metric_column = G.outdegree()
+
         elif metric == 'degree':
             metric_column = G.degree()
+
         elif metric == 'd_pagerank':
-            # scale page rank by number of nodes
-            scaled_pr_vals = np.array(G.pagerank()) * len(G.vs)
-            metric_column = scaled_pr_vals.tolist()
+            metric_column = G.pagerank()
+
         elif metric == 'u_pagerank':
-            # scale page rank by number of nodes
-            scaled_pr_vals = np.array(G.as_undirected().pagerank()) * len(G.vs)
-            metric_column = scaled_pr_vals.tolist()
+            metric_column = G.as_undirected().pagerank()
+
         elif metric == 'd_closeness':
             metric_column = G.closeness(mode="IN", normalized=True)
+
         elif metric == 'u_closeness':
             metric_column = G.as_undirected().closeness(normalized=True)
+
         elif metric == 'd_betweenness':
             metric_column = G.betweenness(directed=True)
+
         elif metric == 'u_betweenness':
-            metric_column = G.as_undirected().betweenness(directed=True)
+            metric_column = G.as_undirected().betweenness(directed=False)
+
         elif metric == 'authorities':
             metric_column = G.authority_score()
+
         elif metric == 'hubs':
             metric_column = G.hub_score(scale=True)
+
         elif metric == 'd_eigen':
             metric_column = G.eigenvector_centrality()
+
         elif metric == 'u_eigen':
             metric_column = G.as_undirected().eigenvector_centrality()
+
         elif 'recentcite' in metric:
             # metric == recentcite_10 means threshold = 10
             current_year = year
