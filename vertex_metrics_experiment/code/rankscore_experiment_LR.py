@@ -13,8 +13,7 @@ from bag_of_words import *
 
 def get_rankscores_LR(G, test_params, metrics,
                       include_similarity, subnet_dir,
-                      metric_normalization=None,
-                      print_progress=True):
+                      metric_normalization=None):
     """
     Computes rank scores for each metric individually in metrics list
     """
@@ -63,8 +62,7 @@ def get_rankscores_LR(G, test_params, metrics,
         testcase_scores = get_test_case_scores_LR(G, test_cases, snapshots_dict,
                                                   tfidf_matrix, op_id_to_bow_id,
                                                   LogReg, columns_to_use,
-                                                  metric_normalization,
-                                                  print_progress)
+                                                  metric_normalization)
 
         scores[metric] = testcase_scores
 
@@ -73,8 +71,7 @@ def get_rankscores_LR(G, test_params, metrics,
 
 def get_test_case_scores_LR(G, test_cases, snapshots_dict,
                             tfidf_matrix, op_id_to_bow_id,
-                            LogReg, columns_to_use, metric_normalization,
-                            print_progress=False):
+                            LogReg, columns_to_use, metric_normalization):
     """
     computes the scores for each test case
 

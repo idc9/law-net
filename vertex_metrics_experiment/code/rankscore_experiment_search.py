@@ -10,7 +10,7 @@ from pipeline_helper_functions import *
 from attachment_model_inference import *
 
 
-def get_rankscores_search(G, test_params, metrics, subnet_dir, threshold):
+def get_rankscores_search(G, test_params, metrics, subnet_dir, num_to_keep):
     """
     Computes rank scores for each metric individually in metrics list
     """
@@ -34,14 +34,14 @@ def get_rankscores_search(G, test_params, metrics, subnet_dir, threshold):
     # get scores for each metric
     for metric in metrics:
         # compute scores on test cases
-        scores[metric] = get_test_case_scores_seach(G, test_cases, snapshots_dict,
-                                                    metric, tfidf_matrix, op_id_to_bow_id, threshold)
+        scores[metric] = get_test_case_scores_search(G, test_cases, snapshots_dict,
+                                                    metric, tfidf_matrix, op_id_to_bow_id, num_to_keep)
 
     return scores
 
 
 def get_test_case_scores_search(G, test_cases, snapshots_dict, metric,
-                                tfidf_matrix, op_id_to_bow_id, threshold):
+                                tfidf_matrix, op_id_to_bow_id, num_to_keep):
     """
     computes the scores for each test case
 
@@ -53,14 +53,17 @@ def get_test_case_scores_search(G, test_cases, snapshots_dict, metric,
     # compute scores for each test case
     scores = pd.Series(index=[c['name'] for c in test_cases])
     for test_case in test_cases:
-        scores[test_case['name']] = get_rankscore_sort(G, test_case, snapshots_dict,
-                                                       metric, tfidf_matrix, op_id_to_bow_id, threshold)
+        scores[test_case['name']] = get_rankscore_search(G, test_case,
+                                                         snapshots_dict,
+                                                         metric, tfidf_matrix,
+                                                         op_id_to_bow_id,
+                                                         num_to_keep)
 
     return scores
 
 
 def get_rankscore_search(G, test_case, snapshots_dict, metric,
-                         tfidf_matrix, op_id_to_bow_id, threshold):
+                         tfidf_matrix, op_id_to_bow_id, num_to_keep):
     """
     Gets the rank score for a given test case
     """
@@ -82,16 +85,17 @@ def get_rankscore_search(G, test_case, snapshots_dict, metric,
     # all edges from ing case to previous cases
     edgelist = zip([test_case.index] * len(ancentors), ancentors)
 
+    columns_to_use = [metric, 'similarity']
+
     # grab edge data
-    edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use=metric,
+    edge_data = get_edge_data(G, edgelist, snapshot_df, columns_to_use=columns_to_use,
                               tfidf_matrix=tfidf_matrix, op_id_to_bow_id=op_id_to_bow_id,
                               metric_normalization=None, edge_status=None)
 
-
-    #TODO: subset cases
+    edge_data.sort_values(by='similarity', ascending=False).iloc[0:num_to_keep]
 
     # case rankings (CL ids)
-    ancestor_ranking = ranking_by_metric_sort(edge_data, metric)
+    ancestor_ranking = rank_cases_by_metric(edge_data, metric)
 
     # compute rank score
     score = score_ranking(cited_cases, ancestor_ranking)

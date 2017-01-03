@@ -94,7 +94,7 @@ def make_tr_edge_df(G, subnet_dir, active_years,
 
         edge_data = edge_data.append(sn_edge_data)
 
-    edge_data.to_csv(subnet_dir + 'edge_data.csv')
+    edge_data.to_csv(subnet_dir + 'edge_data.csv', index=True)
 
 
 def update_edge_df(G, subnet_dir, active_years, metrics_to_add,
