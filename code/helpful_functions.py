@@ -5,17 +5,17 @@ def case_info(op_id):
     """
     Given the case id returns a link to the opinion file on court listener
     """
-
     # API url
-    url = 'https://www.courtlistener.com/api/rest/v3/opinions/%s/?format=json'\
-          % op_id
+    op_api = 'https://www.courtlistener.com/api/rest/v3/opinions/%s/?format=json'\
+              % op_id
 
-    # get the absolute url from the API
-    api_data = url_to_dict(url)
-    courtlistener_url = 'https://www.courtlistener.com'
-    opinion_url = courtlistener_url + api_data['absolute_url']
+    # get data from opinion and cluster api
+    op_data = url_to_dict(op_api)
+    cl_data = url_to_dict(op_data['cluster'])
 
-    print api_data['case_name']
-    print api_data['date_filed']
-    print
+    # url to opinion text
+    opinion_url = 'https://www.courtlistener.com' + op_data['absolute_url']
+
+    print cl_data['case_name']
+    print 'date_filed: %s' % cl_data['date_filed']
     print opinion_url
