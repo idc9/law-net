@@ -163,9 +163,9 @@ def rank_cases_by_metric(edge_data, metric):
     ascending = (not large_is_good)
 
     # sort edges by metric
-    sored_edges = edge_data.sort_values(by=metric,
-                                        ascending=ascending).index.tolist()
+    sorted_edges = edge_data.sort_values(by=metric,
+                                         ascending=ascending).index.tolist()
 
     # return cited case
     # return np.array([e[1] for e in sored_edges])
-    return np.array([e.split('_')[1] for e in sored_edges])
+    return np.array([e.split('_')[1] for e in sorted_edges])
