@@ -5,6 +5,8 @@ import pandas as pd
 from math import *
 from datetime import datetime
 import copy
+from scipy.stats import rankdata
+
 
 from sklearn.metrics import log_loss
 import scipy as sp
@@ -13,30 +15,27 @@ from experiment_helper_functions import *
 from pipeline_helper_functions import *
 from attachment_model_inference import *
 from bag_of_words import *
+from rank_loss_functions import *
 
 
-def get_rankscores_LR(G, test_params, metrics, subnet_dir,
+def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
                       metric_normalization=None):
     """
     Computes rank scores for each metric individually in metrics list
     """
 
-    # sample test cases
-    test_cases = get_test_cases(G,
-                                test_params['active_years'],
-                                test_params['num_test_cases'],
-                                test_params['seed'])
-
     # load the tfidf matrix
     tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
 
-    # ranking scores for each test case
-    rank_scores = pd.DataFrame(index=[c['name'] for c in test_cases],
-                               columns=metrics)
+    # ranking loss: mean rank score, reicprocal rank, precision at K
+    MRS = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    RR = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    PAK100 = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    PAK1000 = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
 
-    # ranking scores for each test case
-    logloss_scores = pd.DataFrame(index=[c['name'] for c in test_cases],
-                                  columns=metrics)
+    # predictiion loss: error rate, logloss
+    ERR = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    LL = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
 
     # fit each logistic regression model
     LogRegs = fit_LogRegs(subnet_dir, metrics)
@@ -77,23 +76,40 @@ def get_rankscores_LR(G, test_params, metrics, subnet_dir,
             LogReg = LogRegs[metric]
 
             # probability a case is cited
-            citation_probs = get_attachment_probabilty_logreg(LogReg,
-                                                              edge_data[columns_to_use])
+            ranking = get_attachment_probabilty_logreg(LogReg,
+												       edge_data[columns_to_use])
 
-            # sort by attachment probabilities
-            citation_probs.sort_values('citation_prob', ascending=False,
-                                       kind='mergesort', inplace=True)
+            scores = ranking['citation_prob']
+            ranking['rank'] = np.floor(rankdata(scores, method='average'))
+            ranking.index = [e[1] for e in ranking.index]
 
-            # case rankings (CL ids)
-            # return np.array([e[1] for e in citation_probs.index])
-            ancestor_ranking = np.array([e.split('_')[1] for e in citation_probs.index])
+            # ranking loss
+            mrs = get_mean_rankscore(cited_cases, ranking)
+            rr = get_reciprocal_rank(cited_cases, ranking)
+            pak100 = get_precision_at_K(cited_cases, ranking, 100)
+            pak1000 = get_precision_at_K(cited_cases, ranking, 1000)
 
-            rank_scores.loc[test_case['name'], metric] = score_ranking(cited_cases,
-                                                                  ancestor_ranking)
+            # preidction loss
+            predictions = get_predictions(cited_cases, ranking)
+            err = get_error_rate(predictions)
+            ll = get_logloss(predictions)
 
-            logloss_scores.loc[test_case['name'], metric] = score_logloss(citation_probs,
-                                                                          cited_cases)
-    return rank_scores, logloss_scores, LogRegs
+            # update data frames
+            MRS.loc[test_case['name'], metric] = mrs
+            RR.loc[test_case['name'], metric] = rr
+            PAK100.loc[test_case['name'], metric] = pak100
+            PAK1000.loc[test_case['name'], metric] = pak1000
+            ERR.loc[test_case['name'], metric] = err
+            LL.loc[test_case['name'], metric] = ll
+
+        ranking_loss = {'MRS': MRS,
+                        'RR': RR,
+                        'PAK100': PAK100,
+                        'PAK1000': PAK1000,
+                        'ERR': ERR,
+                        'LL': LL}
+
+    return ranking_loss, LogRegs
 
 
 def fit_LogRegs(subnet_dir, metrics):
@@ -138,7 +154,7 @@ def get_attachment_probabilty_logreg(LogReg, X):
     LogReg: a logistic regression object
     (i.e. the output of fit_logistic_regression)
 
-    X: columns of vertex_df used in evaluating the
+    X: columns of vertex_df  used in evaluating the
     logistical regression
 
     Output
@@ -157,24 +173,20 @@ def get_attachment_probabilty_logreg(LogReg, X):
     return prob_df
 
 
-def logloss(act, pred):
-    epsilon = 1e-15
-    pred = sp.maximum(epsilon, pred)
-    pred = sp.minimum(1-epsilon, pred)
-    ll = sum(act*sp.log(pred) + sp.subtract(1,act)*sp.log(sp.subtract(1,pred)))
-    ll = ll * -1.0/len(act)
-    return ll
-
-
-def score_logloss(citation_probs, cited_cases):
-
+def get_predictions(cited_cases, ranking):
+    """
+    Given the citation_probs df and list of cited cases returns the
+    predictions df with columns 'pred_prob' and 'y'
+    """
     # re-index to cases
-    citation_probs.index = [e.split('_')[1] for e in citation_probs.index]
-    citation_probs['is_edge'] = 0
-    citation_probs.loc[cited_cases, 'is_edge'] = 1
+    predictions = pd.DataFrame(columns=['pred_prob', 'y'],
+                               index=ranking.index)
 
-    # get list of predicted probs and citaiton indicators
-    y_act = citation_probs['is_edge'].tolist()
-    prob = citation_probs['citation_prob'].tolist()
+    # add classification labels
+    predictions['y'] = 0
+    predictions.loc[cited_cases, 'y'] = 1
 
-    return logloss(y_act, prob)
+    # add prediction probabilities
+    predictions['pred_prob'] = ranking['citation_prob'].tolist()
+
+    return predictions.reset_index(drop=True, inplace=False)

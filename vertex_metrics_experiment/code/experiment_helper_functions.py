@@ -4,6 +4,7 @@ import random as random
 import pandas as pd
 from math import *
 from datetime import datetime
+from scipy.stats import rankdata
 
 from pipeline_helper_functions import *
 from get_edge_data import *
@@ -91,56 +92,7 @@ def get_cited_cases(G, citing_vertex):
             if G.vs[ig_id]['year'] < citing_vertex['year']]
 
 
-def get_rank_score(position, number_of_items):
-    """
-    Computes the rank score (1 is good)
-
-    See Zanin et al. (pref attachemnt aging ...)
-
-    Parameters
-    ----------
-    position: where the item is ranked
-
-    number_of_items: how many items were ranked
-    """
-    return 1.0 - float(position) / (number_of_items - 1.0)
-
-
-def score_ranking(cited_cases, ancestor_ranking):
-    """
-    Retuns the rank score for a case
-
-    Parameters
-    ----------
-    cited_cases: list of cases that were cited
-
-    cases_ranking: ranking of all ancestors
-
-    Output
-    ------
-    average of cited case rank scores
-    """
-
-    case_scores = []
-
-    # number of ancestors
-    num_items = len(ancestor_ranking)
-
-    # compute rank score for each case test case actually cited
-    for case in cited_cases:
-
-        # where cited case was ranked
-        rank = np.where(ancestor_ranking == case)[0][0]
-
-        # score the ranking
-        rank_score = get_rank_score(rank, num_items)
-
-        case_scores.append(rank_score)
-
-    return np.mean(case_scores)
-
-
-def rank_cases_by_metric(edge_data, metric):
+def get_rank_by_metric(edge_data, metric):
     """
     Sorts cases by a given metric
 
@@ -154,18 +106,15 @@ def rank_cases_by_metric(edge_data, metric):
     ------
     CL ids of ranked cases
     """
+    ranking = pd.DataFrame(columns=['rank'],
+                           index=[e[1] for e in edge_data.index])
 
     # larger value of metric is means more likely to be cited
     if metric in ['age']:
-        large_is_good = False
+        scores = - edge_data[metric]
     else:
-        large_is_good = True
-    ascending = (not large_is_good)
+        scores = edge_data[metric]
 
-    # sort edges by metric
-    sorted_edges = edge_data.sort_values(by=metric,
-                                         ascending=ascending).index.tolist()
+    ranking['rank'] = np.floor(rankdata(scores))
 
-    # return cited case
-    # return np.array([e[1] for e in sored_edges])
-    return np.array([e.split('_')[1] for e in sorted_edges])
+    return ranking

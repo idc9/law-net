@@ -123,8 +123,7 @@ def update_edge_df(G, subnet_dir, active_years, metrics_to_add,
         op_id_to_bow_id = None
 
     # get edges that are in edge_data then convert them to igraph indices
-    edgelist_CLid = [get_edges_from_str(e) for e in edge_data.index]
-    # edgelist_CLid = [e[1] for e in edge_data.index]
+    edgelist_CLid = [e for e in edge_data.index]
     edgelist = [edge_op_to_ig(G, e) for e in edgelist_CLid]
 
     # organize edges by ing snapshot year
@@ -154,15 +153,6 @@ def update_edge_df(G, subnet_dir, active_years, metrics_to_add,
 
     # save updated edge dataframe
     edge_data.to_csv(edge_data_path)
-
-
-def get_edges_from_str(s):
-    """
-    Helper function for update_edge_df(). Converts string representation of
-    an edge to a tuple
-    """
-    split = s.split('_')
-    return split[0], split[1]
 
 
 def edge_op_to_ig(G, edge):

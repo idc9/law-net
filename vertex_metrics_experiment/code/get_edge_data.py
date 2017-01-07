@@ -57,8 +57,8 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
     ed_metrics = snapshot_df.loc[[int(i) for i in ed_op_ids]]
 
     # initialize edge data frame
-    edge_data = pd.DataFrame()
-    # index = zip(ing_op_ids, ed_op_ids)
+    edge_data = pd.DataFrame(index=zip(ing_op_ids, ed_op_ids))
+    edge_data.index.name = 'op_id' # op_id
 
     # add columns to edge data frame
     for metric in columns_to_use:
@@ -103,10 +103,6 @@ def get_edge_data(G, edgelist, snapshot_df, columns_to_use,
             is_edge = [int(edge_is_present(G, e[0], e[1])) for e in edgelist]
 
         edge_data['is_edge'] = is_edge
-
-    edge_data.index = [str(ing_op_ids[i]) + '_' + str(ed_op_ids[i])
-                       for i in range(num_edges)]
-    edge_data.index.name = 'CLids' # op_id
 
     return edge_data
 

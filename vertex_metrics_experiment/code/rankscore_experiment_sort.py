@@ -8,28 +8,24 @@ from datetime import datetime
 from experiment_helper_functions import *
 from pipeline_helper_functions import *
 from attachment_model_inference import *
+from rank_loss_functions import *
 
 
-def get_rankscores_sort(G, test_params, metrics,
-                        subnet_dir):
+def get_rankscores_sort(G, test_cases, metrics, subnet_dir):
     """
     Computes rank scores for each metric individually in metrics list
     """
 
-    # sample test cases
-    test_cases = get_test_cases(G,
-                                test_params['active_years'],
-                                test_params['num_test_cases'],
-                                test_params['seed'])
-
-    # load tfidf matrix
+    # load the tfidf matrix
     tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
 
-    # ranking scores for each test case
-    scores = pd.DataFrame(index=[c['name'] for c in test_cases],
-                          columns=metrics)
+    # ranking loss: mean rank score, reicprocal rank, precision at K
+    MRS = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    RR = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    PAK100 = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
+    PAK1000 = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
 
-    # score each test case
+    # evalute each test case
     for test_case in test_cases:
         # converted ig index to CL id
         cited_cases = get_cited_cases(G, test_case)
@@ -51,13 +47,26 @@ def get_rankscores_sort(G, test_params, metrics,
                                   tfidf_matrix=tfidf_matrix, op_id_to_bow_id=op_id_to_bow_id,
                                   metric_normalization=None, edge_status=None)
 
-        # score each metric
+        # evaluate each metric
         for metric in metrics:
-            # case rankings (CL ids)
-            ancestor_ranking = rank_cases_by_metric(edge_data, metric)
 
-            # compute rank score
-            scores.loc[test_case['name'], metric] = score_ranking(cited_cases,
-                                                                  ancestor_ranking)
+            ranking = get_rank_by_metric(edge_data, metric)
 
-    return scores
+            # ranking loss
+            mrs = get_mean_rankscore(cited_cases, ranking)
+            rr = get_reciprocal_rank(cited_cases, ranking)
+            pak100 = get_precision_at_K(cited_cases, ranking, 100)
+            pak1000 = get_precision_at_K(cited_cases, ranking, 1000)
+
+            # update data frames
+            MRS.loc[test_case['name'], metric] = mrs
+            RR.loc[test_case['name'], metric] = rr
+            PAK100.loc[test_case['name'], metric] = pak100
+            PAK1000.loc[test_case['name'], metric] = pak1000
+
+        ranking_loss = {'MRS': MRS,
+                        'RR': RR,
+                        'PAK100': PAK100,
+                        'PAK1000': PAK1000}
+
+    return ranking_loss
