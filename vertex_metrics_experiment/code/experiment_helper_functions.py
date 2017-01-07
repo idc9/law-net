@@ -109,11 +109,11 @@ def get_rank_by_metric(edge_data, metric):
     ranking = pd.DataFrame(columns=['rank'],
                            index=[e[1] for e in edge_data.index])
 
-    # larger value of metric is means more likely to be cited
-    if metric in ['age']:
-        scores = - edge_data[metric]
-    else:
+    if metric in ['age']:  # small is good
         scores = edge_data[metric]
+
+    else:  # large is goo
+        scores = - edge_data[metric]
 
     ranking['rank'] = np.floor(rankdata(scores))
 

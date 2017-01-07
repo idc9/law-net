@@ -8,7 +8,6 @@ import copy
 
 from experiment_helper_functions import *
 from pipeline_helper_functions import *
-from attachment_model_inference import *
 from rank_loss_functions import *
 
 

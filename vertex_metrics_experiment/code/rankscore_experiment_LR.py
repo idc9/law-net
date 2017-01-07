@@ -13,13 +13,13 @@ import scipy as sp
 
 from experiment_helper_functions import *
 from pipeline_helper_functions import *
-from attachment_model_inference import *
+from logistic_regression_model import *
 from bag_of_words import *
 from rank_loss_functions import *
 
 
 def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
-                      metric_normalization=None):
+                      metric_normalization=None, feature_transform=None):
     """
     Computes rank scores for each metric individually in metrics list
     """
@@ -38,7 +38,7 @@ def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
     LL = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
 
     # fit each logistic regression model
-    LogRegs = fit_LogRegs(subnet_dir, metrics)
+    LogRegs = fit_LogRegs(subnet_dir, metrics, feature_transform, metric_normalization)
 
     # evaluate logistic regression on each test case
     for test_case in test_cases:
@@ -76,12 +76,10 @@ def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
             LogReg = LogRegs[metric]
 
             # probability a case is cited
-            ranking = get_attachment_probabilty_logreg(LogReg,
-												       edge_data[columns_to_use])
-
-            scores = ranking['citation_prob']
-            ranking['rank'] = np.floor(rankdata(scores, method='average'))
-            ranking.index = [e[1] for e in ranking.index]
+            ranking = predict_logreg(LogReg,
+                                     edge_data[columns_to_use],
+                                     cited_cases,
+                                     feature_transform)
 
             # ranking loss
             mrs = get_mean_rankscore(cited_cases, ranking)
@@ -90,9 +88,8 @@ def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
             pak1000 = get_precision_at_K(cited_cases, ranking, 1000)
 
             # preidction loss
-            predictions = get_predictions(cited_cases, ranking)
-            err = get_error_rate(predictions)
-            ll = get_logloss(predictions)
+            err = get_error_rate(ranking)
+            ll = get_logloss(ranking)
 
             # update data frames
             MRS.loc[test_case['name'], metric] = mrs
@@ -112,10 +109,14 @@ def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
     return ranking_loss, LogRegs
 
 
-def fit_LogRegs(subnet_dir, metrics):
+def fit_LogRegs(subnet_dir, metrics, feature_transform, metric_normalization):
     # load edge data for all edges
-    tr_edge_data = pd.read_csv(subnet_dir + 'edge_data.csv',
-                               index_col=0)
+    if metric_normalization:
+        edge_data_path = subnet_dir + 'edge_data.csv'
+    else:
+        edge_data_path = subnet_dir + 'edge_data_%s.csv' % metric_normalization
+
+    tr_edge_data = pd.read_csv(edge_data_path, index_col=0)
 
     # store logistic regressions
     LogRegs = {}
@@ -126,7 +127,10 @@ def fit_LogRegs(subnet_dir, metrics):
         columns_to_use = get_columns(metrics, metric)
 
         # fit logistic regression
-        LogReg = fit_logistic_regression(tr_edge_data, columns_to_use)
+        LogReg = fit_logreg(tr_edge_data['is_edge'],
+                            tr_edge_data[columns_to_use],
+                            feature_transform)
+
         LogRegs[metric] = LogReg
 
     return LogRegs
@@ -143,50 +147,3 @@ def get_columns(metrics, metric):
         columns_to_use.append('similarity')
 
     return columns_to_use
-
-
-def get_attachment_probabilty_logreg(LogReg, X):
-    '''
-    Evaluates our logistic regression model for a given dataset.
-
-    Parameters
-    ------------
-    LogReg: a logistic regression object
-    (i.e. the output of fit_logistic_regression)
-
-    X: columns of vertex_df  used in evaluating the
-    logistical regression
-
-    Output
-    ------
-    returns a list of df of attachment probabilities
-    '''
-    # TODO: double check we have classes right and order of X cols right
-
-    # create probability data frame
-    prob_df = pd.DataFrame(index=X.index)
-
-    # which class??
-    citation_index = np.where(LogReg.classes_ == 1)[0]
-    prob_df['citation_prob'] = LogReg.predict_proba(X)[:, citation_index]  # should this be 0 or 1??
-
-    return prob_df
-
-
-def get_predictions(cited_cases, ranking):
-    """
-    Given the citation_probs df and list of cited cases returns the
-    predictions df with columns 'pred_prob' and 'y'
-    """
-    # re-index to cases
-    predictions = pd.DataFrame(columns=['pred_prob', 'y'],
-                               index=ranking.index)
-
-    # add classification labels
-    predictions['y'] = 0
-    predictions.loc[cited_cases, 'y'] = 1
-
-    # add prediction probabilities
-    predictions['pred_prob'] = ranking['citation_prob'].tolist()
-
-    return predictions.reset_index(drop=True, inplace=False)

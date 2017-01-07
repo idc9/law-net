@@ -122,7 +122,7 @@ def get_error_rate(predictions):
 
     cutoff = 0.5
     # get list of predicted probs and citaiton indicators
-    y_act = predictions['y'].tolist()
+    y_act = predictions['is_edge'].tolist()
     y_pred = [1 if p > cutoff else 0 for p in predictions['pred_prob']]
 
     return np.mean([1 if y_act[i] == y_pred[i] else 0
@@ -139,7 +139,7 @@ def get_logloss(predictions):
     """
 
     # get list of predicted probs and citaiton indicators
-    y_act = predictions['y'].tolist()
+    y_act = predictions['is_edge'].tolist()
     prob = predictions['pred_prob'].tolist()
 
     return logloss(y_act, prob)
