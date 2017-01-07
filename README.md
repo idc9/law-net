@@ -17,8 +17,8 @@ We recently gave a presentation about our exploratory analysis at the [PyData](h
 # Our code
 You can load the SCOTUS subnetwork (saved in this directory as a .graphml file)
 ```
-import igraph
-G = Graph.Read_GraphML('scotus_network.graphml')
+import igraph as ig
+G = ig.Graph.Read_GraphML('scotus_network.graphml')
 ```
 
 
