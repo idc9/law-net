@@ -17,7 +17,7 @@ from run_exper_functions import *
 
 
 
-def get_vertex_metrics():
+def get_vertex_metrics(network_name):
     if network_name == 'scotus':
         
         vertex_metrics = ['indegree', 'outdegree', 'degree',
