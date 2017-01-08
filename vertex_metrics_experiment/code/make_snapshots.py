@@ -180,6 +180,7 @@ def create_metric_column(G, metric, year=None):
 
             metric_column = get_recent_citations(G, current_year, threshold)
 
+
     except Exception:
         print 'problem with %s' % metric
         metric_column = metric_column = [np.nan] * len(G.vs)

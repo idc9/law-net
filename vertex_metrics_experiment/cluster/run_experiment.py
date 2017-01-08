@@ -2,13 +2,19 @@ import sys
 import numpy as np
 import igraph as ig
 
-repo_directory = '/nas/longleaf/home/idcarm/projects/law-net/'
-data_dir = '/nas/longleaf/home/idcarm/data/courtlistener/'
+#repo_directory = '/nas/longleaf/home/idcarm/projects/law-net/'
+#data_dir = '/nas/longleaf/home/idcarm/data/courtlistener/'
+
+repo_directory = '/Users/iaincarmichael/Dropbox/Research/law/law-net'
+data_dir = '/Users/iaincarmichael/data/courtlistener/'
+
+
 sys.path.append(repo_directory + 'vertex_metrics_experiment/code/')
-from experiment_helper_functions import get_test_cases
+# from experiment_helper_functions import get_test_cases
+from code import experiment_helper_functions
 from run_exper import *
 
-network_name = 'Federal'
+network_name = 'scotus'
 subnet_dir = data_dir + network_name + '/'
 results_dir = subnet_dir + 'results/'
 

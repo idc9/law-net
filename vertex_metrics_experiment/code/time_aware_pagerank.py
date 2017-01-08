@@ -135,8 +135,7 @@ def get_time_aware_pagerank(A, years, p, qtv, qvt):
     # re-normalize to probabilty vectors
     return ta_pr/sum(ta_pr), pr_years/sum(pr_years)
 
-
-def power_method(P, init=None, tol = 1e-8, maxiter = 1e5):
+def power_method(P, init=None, tol=1e-8, maxiter=1e5):
     """
     Borrowing form
     https://github.com/gvanderheide/discreteMarkovChain/blob/master/discreteMarkovChain/markovChain.py
