@@ -15,11 +15,9 @@ from experiment_helper_functions import get_test_cases
 from run_exper_functions import *
 
 
-
-
 def get_vertex_metrics(network_name):
     if network_name == 'scotus':
-        
+
         vertex_metrics = ['indegree', 'outdegree', 'degree',
                           'd_pagerank', 'u_pagerank',
                           'authorities', 'hubs',
@@ -35,21 +33,19 @@ def get_vertex_metrics(network_name):
 
     else:
         vertex_metrics = ['indegree', 'outdegree', 'degree',
-                          'd_pagerank','u_pagerank',
+                          'd_pagerank', 'u_pagerank',
                           'authorities', 'hubs',
-                           #'d_eigen', 'u_eigen', # d_eigen is being problematic
-                           'u_eigen']#,
-                           #'d_betweenness', 'u_betweenness',
-                           #'d_closeness', 'u_closeness']
+                           # 'd_eigen', 'u_eigen', # d_eigen is being problematic
+                           'u_eigen']  #,
+                           # 'd_betweenness', 'u_betweenness',
+                           # 'd_closeness', 'u_closeness']
 
         # add recent citations
         vertex_metrics += ['recentcite_' + str(t) for t in np.arange(1, 10 + 1)]
         vertex_metrics += ['recentcite_' + str(t) for t in [15, 20, 25, 30, 35, 40]]
 
         vertex_metrics += ['age', 'similarity']
-        
-        
-        
+
     # # for testing
     # vertex_metrics = ['age', 'similarity']
     # vertex_metrics += ['indegree', 'outdegree']
@@ -68,12 +64,12 @@ def get_testcase_ids(G, active_years):
     return test_case_ids
 
 
-def main():    
-                
+def main():
+
     network_name = 'federal'
     to_run = ['sort']
     name = 'federal_test'
-    
+
     # directory set up
     subnet_dir = data_dir + network_name + '/'
     results_dir = subnet_dir + 'results/'
@@ -101,7 +97,7 @@ def main():
 
         start = time.time()
         run_sort(G, exper_params_sort, subnet_dir, name)
-        print 'sort took %d seconds' % (time.time()- start)
+        print 'sort took %d seconds' % (time.time() - start)
 
     if 'match' in to_run():
         print 'starting match'

@@ -69,8 +69,52 @@ def make_snapshot_vertex_metrics(G, active_years, vertex_metrics,
         for metric in vertex_metrics:
             df_T[metric] = create_metric_column(G_T, metric, year)
 
-        file_path = sn_dir + 'vertex_metrics_' \
-                                        + str(year) + '.csv'
+        file_path = sn_dir + 'vertex_metrics_' + str(year) + '.csv'
+        df_T.to_csv(file_path, index=True)
+
+
+def update_snapshot_vertex_metrics(G, active_years, to_add, subnet_dir):
+    """
+    Creates the data frames with vertex metics in given years
+
+    Parameters
+    -----------
+    G: igraph network object with each node assigned a year
+
+    years: sequence of years we want to compute
+
+    vertex_metrics: which vertex metrics we want to compute
+    (pagerank, indegree, etc)
+
+    data_dir: path to generated data folder
+
+    Output
+    --------
+    writes csv files of the vertex metric data frame for each year in years
+    """
+
+    # directory where we save the snapshot dataframes
+    sn_dir = subnet_dir + 'snapshots/'
+
+    # include year before min active year
+    all_years = copy.copy(active_years)
+    all_years.append(min(active_years) - 1)
+
+    # create a vertex df for each year T
+    for year in all_years:
+
+        # read in pre-made snapshot
+        file_path = sn_dir + 'vertex_metrics_' + str(year) + '.csv'
+        df_T = pd.read_csv(file_path, index_col=0)
+
+        # get subgraph at particular time
+        G_T = get_network_at_time(G, year)
+
+        # add column for each metric
+        for metric in to_add:
+            df_T[metric] = create_metric_column(G_T, metric, year)
+
+        # save update
         df_T.to_csv(file_path, index=True)
 
 
@@ -115,6 +159,7 @@ def create_metric_column(G, metric, year=None):
     - degree
     - d_pagerank
     - u_pagerank
+    - rev_pagerank
     - d_closeness
     - u_closeness
     - d_betweenness
@@ -123,6 +168,8 @@ def create_metric_column(G, metric, year=None):
     - hubs
     - d_eigen
     - u_eigen
+    - recentcite_N
+    - citerank_N
 
     d_ means for directed graph
     u_ means for undirected graph
@@ -149,6 +196,9 @@ def create_metric_column(G, metric, year=None):
         elif metric == 'u_pagerank':
             metric_column = G.as_undirected().pagerank()
 
+        elif metric == 'rev_pagerank':
+            metric_column = get_reverse_graph(G).pagerank()
+
         elif metric == 'd_closeness':
             metric_column = G.closeness(mode="IN", normalized=True)
 
@@ -174,12 +224,16 @@ def create_metric_column(G, metric, year=None):
             metric_column = G.as_undirected().eigenvector_centrality()
 
         elif 'recentcite' in metric:
+            # only count citations in the last N years
             # metric == recentcite_10 means threshold = 10
             current_year = year
             threshold = int(metric.split('_')[-1])
 
             metric_column = get_recent_citations(G, current_year, threshold)
 
+        elif 'citerank' in metric:
+            half_life = float(metric.split('_')[-1])
+            metric_column = get_CiteRank(G, half_life, p=.85)
 
     except Exception:
         print 'problem with %s' % metric

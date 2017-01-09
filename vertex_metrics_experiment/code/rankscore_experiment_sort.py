@@ -25,7 +25,14 @@ def get_rankscores_sort(G, test_cases, metrics, subnet_dir):
     PAK1000 = pd.DataFrame(index=[c['name'] for c in test_cases], columns=metrics)
 
     # evalute each test case
+    # i = 0.0
     for test_case in test_cases:
+
+        # i += 1.0
+        # if int(i / 20.0) == i / 20.0:
+        #     current_time = datetime.now().strftime('%H:%M:%S')
+        #     print '(%i/%d) at %s' % (int(i), len(test_cases), current_time)
+
         # converted ig index to CL id
         cited_cases = get_cited_cases(G, test_case)
 
