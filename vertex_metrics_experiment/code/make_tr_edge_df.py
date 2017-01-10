@@ -3,6 +3,7 @@ import pandas as pd
 import random as random
 import copy
 import os
+import re
 
 from pipeline_helper_functions import *
 from get_edge_data import *
@@ -95,9 +96,9 @@ def make_tr_edge_df(G, subnet_dir, active_years,
         edge_data = edge_data.append(sn_edge_data)
 
     if metric_normalization:
-         edge_data_path = subnet_dir + 'edge_data.csv'
-    else:
         edge_data_path = subnet_dir + 'edge_data_%s.csv' % metric_normalization
+    else:
+        edge_data_path = subnet_dir + 'edge_data.csv'
 
     edge_data.to_csv(edge_data_path, index=True)
 
@@ -115,14 +116,13 @@ def update_edge_df(G, subnet_dir, active_years, metrics_to_add,
 
     # load edge data frame
     if metric_normalization:
-        edge_data_path = subnet_dir + 'edge_data.csv'
-    else:
         edge_data_path = subnet_dir + 'edge_data_%s.csv' % metric_normalization
-
-    edge_data.to_csv(edge_data_path, index=True)
+    else:
+        edge_data_path = subnet_dir + 'edge_data.csv'
 
     if os.path.exists(edge_data_path):
         edge_data = pd.read_csv(edge_data_path, index_col=0)
+        edge_data.index = [tuple(re.findall('(\d+)', e)) for e in edge_data.index]
     else:
         raise ValueError('cant find edge data')
 

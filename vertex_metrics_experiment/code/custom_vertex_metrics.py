@@ -1,4 +1,6 @@
 import numpy as np
+import igraph as ig
+
 
 def get_CiteRank(G, half_life, p=.85):
     """

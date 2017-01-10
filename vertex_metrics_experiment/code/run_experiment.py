@@ -7,7 +7,7 @@ import time
 # data_dir = '/nas/longleaf/home/idcarm/data/courtlistener/'
 
 repo_directory = '/Users/iaincarmichael/Dropbox/Research/law/law-net'
-data_dir = '/Users/iaincarmichael/data/courtlistener/'
+data_dir = '/Users/iaincarmichael/Documents/courtlistener/'
 
 
 # sys.path.append(repo_directory + 'vertex_metrics_experiment/code/')
@@ -33,7 +33,7 @@ def get_vertex_metrics(network_name):
 
     else:
         vertex_metrics = ['indegree', 'outdegree', 'degree',
-                          'd_pagerank', 'u_pagerank',
+                          'd_pagerank', 'u_pagerank', 'rev_pagerank',
                           'authorities', 'hubs',
                            # 'd_eigen', 'u_eigen', # d_eigen is being problematic
                            'u_eigen']  #,
@@ -43,7 +43,7 @@ def get_vertex_metrics(network_name):
         # add recent citations
         vertex_metrics += ['recentcite_' + str(t) for t in np.arange(1, 10 + 1)]
         vertex_metrics += ['recentcite_' + str(t) for t in [15, 20, 25, 30, 35, 40]]
-
+        vertex_metrics = ['citerank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
         vertex_metrics += ['age', 'similarity']
 
     # # for testing
@@ -66,9 +66,9 @@ def get_testcase_ids(G, active_years):
 
 def main():
 
-    network_name = 'federal'
-    to_run = ['sort']
-    name = 'federal_test'
+    network_name = 'scotus'
+    to_run = ['sort', 'match', 'logreg']
+    name = 'scotes_test_cr'
 
     # directory set up
     subnet_dir = data_dir + network_name + '/'
@@ -99,7 +99,7 @@ def main():
         run_sort(G, exper_params_sort, subnet_dir, name)
         print 'sort took %d seconds' % (time.time() - start)
 
-    if 'match' in to_run():
+    if 'match' in to_run:
         print 'starting match'
         # run match
         num_to_keep = 5000

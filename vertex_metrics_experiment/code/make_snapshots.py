@@ -235,6 +235,9 @@ def create_metric_column(G, metric, year=None):
             half_life = float(metric.split('_')[-1])
             metric_column = get_CiteRank(G, half_life, p=.85)
 
+        elif metric == 'num_words':
+            metric_column = G.vs['num_words']
+
     except Exception:
         print 'problem with %s' % metric
         metric_column = metric_column = [np.nan] * len(G.vs)
