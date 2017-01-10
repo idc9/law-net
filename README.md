@@ -1,20 +1,49 @@
 # law-net
-What can we learn by applied network analysis to the law? This project contains code to analyze the law case citation network using data generously provided by [CourtListener](https://www.courtlistener.com/). You will find code that creates the pipeline that takes data from CourtListener and creates various citation networks such as
+What can we learn by applying network and text analysis to the law? This project contains code to analyze legal text and citation networks using data generously provided by [CourtListener](https://www.courtlistener.com/) and the [Supreme Court Database](http://scdb.wustl.edu/).
 
-- entire law case citation network (this is ~3 million nodes and ~30 million edges)
-- SCOTUS subnetwork (e.g. both the citing case and cited case are SCOTUS cases)
-- jurisdiction network
+Some interesting networks include
 
-Note that 'entire' does not actually mean we have every court case. We are still figuring out how good our coverage is and will post updates when we have more.
+- Supreme Court citation network (27,885 nodes, 234,312 directed edges)
+- Federal Appellate circuit (959,985 nodes, 6,649,916 directed edges)
+- any one of the over [400 jurisdiction](https://www.courtlistener.com/coverage/) subnetworks listed on CourtListener
 
-To get started with the data see [getting_started.ipynb](https://github.com/idc9/law-net/blob/master/getting_started.ipynb). User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon.
+These all have accompanying opinion text files as well as additional node metadata such as the case date and hand coded issue area (for SCOTUS).
 
-We are not storing the data (edgelist, vertex metadata, etc) on github since these are several hundred megabyte files. You can use our code to download the data or you can as [Iain](iain@unc.edu) to send you the .csv files which might save you waiting a few hours for the data to download. In the future we will have a better solution for this...
+We recently gave a presentation about our exploratory analysis at the [PyData](http://pydata.org/carolinas2016/) conference.
 
-If you are interested in collaborating feel free to reach out to us!
+[![PyData Carolinas](http://img.youtube.com/vi/AP7_godzwVI/1.jpg)](http://www.youtube.com/watch?v=AP7_godzwVI)
 
 
-This is a collaboration between
+# Our code
+You can load the SCOTUS subnetwork (saved in this directory as a .graphml file)
+```
+import igraph as ig
+G = ig.Graph.Read_GraphML('scotus_network.graphml')
+```
+
+
+User beware: we have not yet make the code clean/robust/user friendly/pleasant/etc -- we will get to this soon. If you have trouble with something please reach out to Iain (iain@unc.edu).
+
+To download much more data see [download_data.ipynb](https://github.com/idc9/law-net/blob/master/download_data.ipynb). This notebook allows you to work with other jurisdiction subnetworks and the opinion text files. Note the two directories you have to change at the top of the notebook.
+
+One of the functions in download_data.ipynb will set up a data directory. I suggest putting `data_dir` outside your copy of the github repo or Dropbox. Github doesn't like large data files and Dropbox might slow things down if you do a lot of reading and writing (i.e. for some NLP operations).
+
+
+
+## About the data
+Current we are using data from [CourtListener](courtlistener.com)  (CL) and the [Supreme Court Data Base](http://scdb.wustl.edu/) (SCDB)
+- the citation network comes from CL
+- opinion texts come from CL
+- some case metadata (jurisdiction, data, judges) comes from CL
+- additional case meta data comes from SCDB
+    - for `issueArea` we have coded Missing as 0. Only SCOTUS cases can have issueArea.
+
+- we identify cases by their CourtListener **opinion** id
+    - CL opinion ids and cluster ids are **not** necessarily the same. One cluster can have many opinions.
+
+
+
+If you are interested in collaborating feel free to reach out to us! This is a collaboration between
 
 [Brendan Schneiderman](https://www.linkedin.com/in/brendan-schneiderman-150b1375)
 
