@@ -7,7 +7,7 @@ import time
 # data_dir = '/nas/longleaf/home/idcarm/data/courtlistener/'
 
 repo_directory = '/Users/iaincarmichael/Dropbox/Research/law/law-net'
-data_dir = '/Users/iaincarmichael/Documents/courtlistener/'
+data_dir = '/Users/iaincarmichael/data/courtlistener/'
 
 
 # sys.path.append(repo_directory + 'vertex_metrics_experiment/code/')
@@ -19,7 +19,7 @@ def get_vertex_metrics(network_name):
     if network_name == 'scotus':
 
         vertex_metrics = ['indegree', 'outdegree', 'degree',
-                          'd_pagerank', 'u_pagerank',
+                          'd_pagerank', 'u_pagerank', 'rev_pagerank',
                           'authorities', 'hubs',
                           #'d_eigen', 'u_eigen', # d_eigen is being problematic
                           'u_eigen',
@@ -29,7 +29,8 @@ def get_vertex_metrics(network_name):
         # add recent citations
         vertex_metrics += ['recentcite_' + str(t) for t in np.arange(1, 10 + 1)]
         vertex_metrics += ['recentcite_' + str(t) for t in [15, 20, 25, 30, 35, 40]]
-        vertex_metrics += ['age', 'similarity']
+        vertex_metrics += ['citerank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
+        vertex_metrics += ['age', 'similarity', 'num_words']
 
     else:
         vertex_metrics = ['indegree', 'outdegree', 'degree',
@@ -43,8 +44,8 @@ def get_vertex_metrics(network_name):
         # add recent citations
         vertex_metrics += ['recentcite_' + str(t) for t in np.arange(1, 10 + 1)]
         vertex_metrics += ['recentcite_' + str(t) for t in [15, 20, 25, 30, 35, 40]]
-        vertex_metrics = ['citerank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
-        vertex_metrics += ['age', 'similarity']
+        vertex_metrics += ['citerank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
+        vertex_metrics += ['age', 'similarity', 'num_words']
 
     # # for testing
     # vertex_metrics = ['age', 'similarity']
@@ -55,7 +56,7 @@ def get_vertex_metrics(network_name):
 
 def get_testcase_ids(G, active_years):
     # test cases
-    test_seed = 2452,
+    test_seed = 1098
     num_test_cases = 1000
     test_cases = get_test_cases(G, active_years,
                                 num_test_cases, seed=test_seed)
@@ -67,8 +68,8 @@ def get_testcase_ids(G, active_years):
 def main():
 
     network_name = 'scotus'
-    to_run = ['sort', 'match', 'logreg']
-    name = 'scotes_test_cr'
+    to_run = ['logreg']
+    name = 'scotus_citerank_words'
 
     # directory set up
     subnet_dir = data_dir + network_name + '/'
@@ -118,10 +119,10 @@ def main():
         print 'starting logreg'
         # run logreg
         num_absent_edges = len(G.es)
-        seed_edge_df = 65432
+        seed_edge_df = 6879
         metric_normalization = 'mean'
         feature_transform = 'interaction'
-        make_tr_data = False
+        make_tr_data = True
 
         logreg_params = {'num_absent_edges': num_absent_edges,
                          'seed_edge_df': seed_edge_df,
