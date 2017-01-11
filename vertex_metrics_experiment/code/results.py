@@ -28,8 +28,11 @@ def plot_scores(results, exper='', metric='', network_name=''):
 
     plt.xlim([0, 1.2 * data['score'].max()])
 
+    axis_font = {'fontname': 'Arial', 'size':'7'}
+
+
     # add labels
-    plt.yticks(pos, data.index)
+    plt.yticks(pos, data.index, **axis_font)
 
     plt.title('%s experiment, %s' % (exper, network_name))
     plt.xlabel(metric)
