@@ -111,14 +111,14 @@ def get_rankscores_LR(G, test_cases, metrics, subnet_dir,
 
 
 def fit_LogRegs(subnet_dir, metrics, feature_transform, metric_normalization):
-    # load edge data for all edges
+    # load edge data for all  edges
     if metric_normalization:
         edge_data_path = subnet_dir + 'edge_data_%s.csv' % metric_normalization
     else:
         edge_data_path = subnet_dir + 'edge_data.csv'
 
     tr_edge_data = pd.read_csv(edge_data_path, index_col=0)
-    edge_data.index = [tuple(re.findall('(\d+)', e)) for e in edge_data.index]
+    tr_edge_data.index = [tuple(re.findall('(\d+)', e)) for e in tr_edge_data.index]
 
     # store logistic regressions
     LogRegs = {}
