@@ -30,6 +30,7 @@ def get_vertex_metrics(network_name):
         vertex_metrics += ['recentcite_' + str(t) for t in np.arange(1, 10 + 1)]
         vertex_metrics += ['recentcite_' + str(t) for t in [15, 20, 25, 30, 35, 40]]
         vertex_metrics += ['citerank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
+        vertex_metrics += ['polyrank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
         vertex_metrics += ['age', 'similarity', 'num_words']
 
     else:
@@ -45,6 +46,7 @@ def get_vertex_metrics(network_name):
         vertex_metrics += ['recentcite_' + str(t) for t in np.arange(1, 10 + 1)]
         vertex_metrics += ['recentcite_' + str(t) for t in [15, 20, 25, 30, 35, 40]]
         vertex_metrics += ['citerank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
+        vertex_metrics += ['polyrank_' + str(t) for t in [1, 2, 5, 10, 20, 50]]
         vertex_metrics += ['age', 'similarity', 'num_words']
 
     # # for testing
@@ -67,9 +69,9 @@ def get_testcase_ids(G, active_years):
 
 def main():
 
-    network_name = 'scotus'
-    to_run = ['logreg']
-    name = 'scotus_citerank_words'
+    network_name = 'federal'
+    to_run = ['sort']
+    name = 'citerank_words'
 
     # directory set up
     subnet_dir = data_dir + network_name + '/'

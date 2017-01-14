@@ -28,7 +28,7 @@ def plot_scores(results, exper='', metric='', network_name=''):
 
     plt.xlim([0, 1.2 * data['score'].max()])
 
-    axis_font = {'fontname': 'Arial', 'size':'7'}
+    axis_font = {'fontname': 'Arial', 'size': '7'}
 
 
     # add labels
