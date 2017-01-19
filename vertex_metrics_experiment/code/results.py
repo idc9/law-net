@@ -22,9 +22,9 @@ def plot_scores(results, exper='', metric='', network_name=''):
     plt.barh(pos,
              data['score'],
              color='blue',
-             alpha=.5,
-             xerr=data['error'],
-             error_kw=error_config)
+             alpha=.5)#,
+             #xerr=data['error'],
+             #error_kw=error_config)
 
     plt.xlim([0, 1.2 * data['score'].max()])
 
