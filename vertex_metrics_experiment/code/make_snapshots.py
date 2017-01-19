@@ -158,10 +158,13 @@ def create_metric_column(G, metric, year=None):
     - outdegree
     - degree
     - d_pagerank
+    - pagerank_P
     - u_pagerank
     - rev_pagerank
     - d_closeness
-    - u_closeness
+    - d_all_closeness
+    - d_in_closeness
+    - d_out_closeness
     - d_betweenness
     - u_betweenness
     - authorities
@@ -200,8 +203,18 @@ def create_metric_column(G, metric, year=None):
         elif metric == 'rev_pagerank':
             metric_column = get_reverse_graph(G).pagerank()
 
-        elif metric == 'd_closeness':
+        elif 'pagerank_' in metric:
+            damping = float(metric.split('_')[-1])/100.0
+            metric_column = G.pagerank(damping=damping)
+
+        elif metric == 'd_all_closeness':
+            metric_column = G.closeness(mode="ALL", normalized=True)
+
+        elif metric == 'd_in_closeness':
             metric_column = G.closeness(mode="IN", normalized=True)
+
+        elif metric == 'd_out_closeness':
+            metric_column = G.closeness(mode="OUT", normalized=True)
 
         elif metric == 'u_closeness':
             metric_column = G.as_undirected().closeness(normalized=True)
@@ -219,7 +232,20 @@ def create_metric_column(G, metric, year=None):
             metric_column = G.hub_score(scale=True)
 
         elif metric == 'd_eigen':
-            metric_column = G.eigenvector_centrality()
+            max_attempts = 10
+            attempt = 0
+            success = False
+            while (not success) and (attempt <= max_attempts):
+
+                try:
+                    arpack_options = ig.ARPACKOptions(maxiter=10000)
+                    metric_column = G.eigenvector_centrality(arpack_options=arpack_options)
+                    success = True
+                except Exception:
+                    attempt += 1
+
+            if not success:
+                metric_column = [np.nan] * len(G.vs)
 
         elif metric == 'u_eigen':
             metric_column = G.as_undirected().eigenvector_centrality()
@@ -243,9 +269,8 @@ def create_metric_column(G, metric, year=None):
         elif metric == 'num_words':
             metric_column = G.vs['num_words']
 
-
     except Exception:
-        print 'problem with %s' % metric
-        metric_column = metric_column = [np.nan] * len(G.vs)
+        print 'problem with %s in year %d' % (metric, year)
+        metric_column = [np.nan] * len(G.vs)
 
     return metric_column

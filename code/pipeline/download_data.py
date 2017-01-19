@@ -236,7 +236,7 @@ def download_zip_to_csv(url, path):
     data = pd.read_csv(zip_path)
 
     # save csv
-    data.to_csv(zip_path.split('.zip')[0], index_col=0)
+    data.to_csv(zip_path.split('.zip')[0], index=True)
 
     # kill the zip file
     os.remove(zip_path)
