@@ -1,7 +1,7 @@
 # law-net
 What can we learn by applying network and text analysis to the law? This project contains code to analyze legal text and citation networks using data generously provided by [CourtListener](https://www.courtlistener.com/) and the [Supreme Court Database](http://scdb.wustl.edu/).
 
-Some interesting networks include
+Some interesting networks include 
 
 - Supreme Court citation network (27,885 nodes, 234,312 directed edges)
 - Federal Appellate circuit (959,985 nodes, 6,649,916 directed edges)

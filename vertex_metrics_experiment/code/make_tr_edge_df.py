@@ -39,7 +39,9 @@ def make_tr_edge_df(G, subnet_dir, active_years,
     # load tfidf matrix
     tfidf_matrix, op_id_to_bow_id = load_tf_idf(subnet_dir + 'nlp/')
     metrics = copy.deepcopy(metrics)
-    metrics.append('similarity')
+
+    if 'similarity' not in metrics:
+        metrics.append('similarity')
 
     # initialize edge data frame
     colnames = copy.deepcopy(metrics)

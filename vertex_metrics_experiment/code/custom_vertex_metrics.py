@@ -15,7 +15,7 @@ def get_CiteRank(G, half_life, p=.85):
     G: igraph graph, assumes 'year' is a vertex atttribute
 
     half_life: the half life of the exponential decay i.e.
-    reset_prob_i = 2^(- age_i / half_life)
+    reset_prob_i propto 2^(- age_i / half_life)
 
     Returns
     -------
@@ -30,6 +30,37 @@ def get_CiteRank(G, half_life, p=.85):
     ages = current_year - years
     exp_weights = 2 ** (- ages/float(half_life))
     probs = exp_weights / exp_weights.sum()
+
+    return G.personalized_pagerank(damping=p, reset=probs)
+
+
+def get_CiteRankPoly(G, exponent, p=.85):
+    """
+    Retuns the CiteRank of a graph
+    (see https://arxiv.org/pdf/physics/0612122.pdf)
+
+    CiteRank is a particular PersonalizedPage rank where the reset
+    probabilities exponentially decay with age of the vertex.
+
+    Parameters
+    ----------
+    G: igraph graph, assumes 'year' is a vertex atttribute
+
+    exponent: the exponent of the decay i.e.
+    reset_prob_i propto 1/(age + 1)^exponent
+
+    Returns
+    -------
+    CiteRank
+    """
+    # years of each case
+    years = np.array(G.vs['year'])
+    current_year = max(years)
+
+    # compute exponentially decaying probabilities
+    ages = current_year - years
+    weights = 1.0 / (1.0 + ages) ** exponent
+    probs = weights / weights.sum()
 
     return G.personalized_pagerank(damping=p, reset=probs)
 
