@@ -48,6 +48,7 @@ The code is written in Python 2.7. You need
 - [igraph](http://igraph.org/python/#startpy)
 - [nltk](http://www.nltk.org/)
     - after installing nltk run the following commands in python
+
      `import nltk`
 
      `nltk.download()`
