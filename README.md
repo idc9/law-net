@@ -1,7 +1,7 @@
 # law-net
 What can we learn by applying network and text analysis to the law? This project contains code to analyze legal text and citation networks using data generously provided by [CourtListener](https://www.courtlistener.com/) and the [Supreme Court Database](http://scdb.wustl.edu/).
 
-Some interesting networks include 
+Some interesting networks include
 
 - Supreme Court citation network (27,885 nodes, 234,312 directed edges)
 - Federal Appellate circuit (959,985 nodes, 6,649,916 directed edges)
@@ -41,11 +41,27 @@ Current we are using data from [CourtListener](courtlistener.com)  (CL) and the 
 - we identify cases by their CourtListener **opinion** id
     - CL opinion ids and cluster ids are **not** necessarily the same. One cluster can have many opinions.
 
+# Code dependancies
+The code is written in Python 2.7. You need
+
+- [Anaconda](https://www.continuum.io/downloads)
+- [igraph](http://igraph.org/python/#startpy)
+- [nltk](http://www.nltk.org/)
+    - after installing nltk run the following commands in python
+     `import nltk`
+
+     `nltk.download()`
 
 
 If you are interested in collaborating feel free to reach out to us! This is a collaboration between
 
+[Anna Zhao](https://www.linkedin.com/in/azhao30)
+
+[Bill Shi](http://billshi.net/)
+
 [Brendan Schneiderman](https://www.linkedin.com/in/brendan-schneiderman-150b1375)
+
+[Ethan Koch](https://www.linkedin.com/in/ethan-koch-25668b113)
 
 [Iain Carmichael](http://iaincarmichael.web.unc.edu/)
 
