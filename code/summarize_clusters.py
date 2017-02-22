@@ -1,5 +1,48 @@
 import numpy as np
 import re
+from collections import OrderedDict
+
+def get_top_n_clusters(n, total_number_clusters, graph_clusters):
+    """
+    for modularity/walktrap:
+    ------------------------
+        prints summary of top 'n' clusters
+        returns dictionary of top n clusters
+            (key = cluster #, value = list of opinions)
+    
+    parameters
+    -----------
+        n = number of top clusters
+        total_number_clusters = total number of clusters from clustering algorithm
+        graph_clusters = pd.Series form of graph_clusters
+    """
+    
+    clusters_size =[]
+    for i in range(0,total_number_clusters+1):
+        cluster_i = graph_clusters[graph_clusters == i].index.tolist() # list of opinions in cluster i
+        clusters_size.append((i,len(cluster_i))) # (cluster #, size_of_cluster)
+
+    # descending sort by size of cluster
+    clusters_size = sorted(clusters_size, key=lambda x: x[1], reverse=True)
+
+    # get top 'n' biggest clusters
+    biggest_clusters = []
+    for i in clusters_size:
+        biggest_clusters.append(i[0])
+    biggest_clusters = biggest_clusters[0:n]
+
+    # summarize top 'n' biggest clusters
+    print "sizes of top", n, "biggest clusters:"
+    print ''
+    for i in clusters_size[0:n]:
+        print "cluster", i[0], ":", i[1], "opinions"
+
+    clusters_dict = OrderedDict()
+    for i in clusters_size[0:n]:
+        cluster_i = graph_clusters[graph_clusters == i[0]].index.tolist() # list of opinions in cluster i
+        clusters_dict[i[0]] = cluster_i
+
+    return clusters_dict, biggest_clusters
 
 def sort_coo(m): # helper function
     '''
