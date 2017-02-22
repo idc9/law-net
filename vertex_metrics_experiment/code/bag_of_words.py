@@ -80,7 +80,7 @@ def load_tf_idf(nlp_dir):
     with open(nlp_dir + 'vocab.p', 'rb') as f:
         vocab = pickle.load(f)
 
-    return tfidf_matrix, op_id_to_bow_id
+    return tfidf_matrix, op_id_to_bow_id, vocab
 
 def make_bag_of_words(text_dir):
     """
