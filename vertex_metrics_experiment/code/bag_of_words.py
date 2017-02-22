@@ -82,6 +82,20 @@ def load_tf_idf(nlp_dir):
 
     return tfidf_matrix, op_id_to_bow_id, vocab
 
+def load_bow(nlp_dir):
+    """
+    bow_matrix, op_id_to_bow_id = load_bow(nlp_dir)
+    """
+    bow_matrix = load_sparse_csr(nlp_dir + 'bag_of_words_matrix.npz')
+
+    with open(nlp_dir + 'op_id_to_bow_id.p', 'rb') as f:
+        op_id_to_bow_id = pickle.load(f)
+
+    with open(nlp_dir + 'vocab.p', 'rb') as f:
+        vocab = pickle.load(f)
+
+    return bow_matrix, op_id_to_bow_id, vocab
+
 def make_bag_of_words(text_dir):
     """
     computes the td-idf matrix of a corpus
