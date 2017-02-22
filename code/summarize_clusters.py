@@ -32,8 +32,6 @@ def get_top_n_clusters(n, total_number_clusters, graph_clusters):
     biggest_clusters = biggest_clusters[0:n]
 
     # summarize top 'n' biggest clusters
-    print "sizes of top", n, "biggest clusters:"
-    print ''
     for i in clusters_size[0:n]:
         print "cluster", i[0], ":", i[1], "opinions"
 
