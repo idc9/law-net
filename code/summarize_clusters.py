@@ -55,6 +55,11 @@ def sort_coo(m): # helper function
         list_of_tuples.append((i,j,k)) # list of tuples
     return sorted(list_of_tuples, key=lambda x: x[2], reverse=True) # sort by tfidf values (descending)
 
+def f7(seq):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
 def all_opinions(file_paths): # helper function
     '''
     Get list of all opinions/text files from the (.txt) file paths
@@ -94,7 +99,6 @@ def top_k_words(opinions, num_words, tfidf_matrix, op_id_to_bow_id, vocab):
     a list of the words with highest tf-idf scores amount the given opinions
     """
     
-    
     # op_id_to_bow_id['opinion_id'] = 'row_index'
     
     vocab = np.array(vocab)
@@ -112,8 +116,9 @@ def top_k_words(opinions, num_words, tfidf_matrix, op_id_to_bow_id, vocab):
     # return the matrix as sorted listed-of-tuples (descending sort by tf-idf values)
     sorted_matrix = sort_coo(new_matrix)
     
-    # get the column indices
+    # get the unique column indices
     column_ind = [x[1] for x in sorted_matrix]
+    column_ind = f7(column_ind) # unique and same ordering
     
     # get the words from column indices
     top_words = vocab[column_ind].tolist()[:n]
