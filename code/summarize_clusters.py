@@ -18,7 +18,7 @@ def get_top_n_clusters(n, total_number_clusters, graph_clusters):
     """
     
     clusters_size =[]
-    for i in range(0,total_number_clusters+1):
+    for i in range(0,total_number_clusters):
         cluster_i = graph_clusters[graph_clusters == i].index.tolist() # list of opinions in cluster i
         clusters_size.append((i,len(cluster_i))) # (cluster #, size_of_cluster)
 
