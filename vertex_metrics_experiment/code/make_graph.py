@@ -39,12 +39,13 @@ def make_graph(subnet_dir, network_name=None):
 
     # add year
     case_metadata['date'] = pd.to_datetime(case_metadata['date'])
+    case_metadata['date_str'] = case_metadata['date'].apply(lambda d: '%d/%d/%d' % (d.day, d.month, d.year))
     case_metadata['year'] = case_metadata['date'].apply(lambda d: d.year)
 
     # add node metadata to graph
     # pretty sure this is the right order
+    G.vs['date'] = case_metadata['date_str']
     G.vs['year'] = case_metadata['year']
-    G.vs['issueArea'] = case_metadata['issueArea']
     G.vs['issueArea'] = case_metadata['issueArea']
     G.vs['court'] = case_metadata['court']
 
@@ -53,4 +54,5 @@ def make_graph(subnet_dir, network_name=None):
         fname = network_name + '_network.graphml'
     else:
         fname = 'network.graphml'
+        
     G.write_graphml(subnet_dir + fname)
